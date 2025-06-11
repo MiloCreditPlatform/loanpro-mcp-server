@@ -243,10 +243,7 @@ go tool cover -html=coverage.out -o coverage.html
 ### Continuous Integration
 
 The project includes GitHub Actions workflows that automatically:
-- Run tests across multiple Go versions (1.21.x, 1.22.x, 1.23.x)
-- Check code coverage and upload to Codecov
-- Run linting with golangci-lint
-- Perform security scanning with Gosec
+- Run tests across multiple Go versions (1.22.x, 1.23.x, 1.24.x)
 - Build and test the binary
 
 ### Test Structure
