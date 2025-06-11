@@ -1,0 +1,1929 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>loanpro: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">loanpro-mcp-server/loanpro/client.go (0.0%)</option>
+				
+				<option value="file1">loanpro-mcp-server/loanpro/customer_methods.go (0.0%)</option>
+				
+				<option value="file2">loanpro-mcp-server/loanpro/customers.go (0.0%)</option>
+				
+				<option value="file3">loanpro-mcp-server/loanpro/loan_methods.go (74.6%)</option>
+				
+				<option value="file4">loanpro-mcp-server/loanpro/loans.go (0.0%)</option>
+				
+				<option value="file5">loanpro-mcp-server/loanpro/payment_methods.go (0.0%)</option>
+				
+				<option value="file6">loanpro-mcp-server/loanpro/payments.go (0.0%)</option>
+				
+				<option value="file7">loanpro-mcp-server/loanpro/types.go (90.9%)</option>
+				
+				<option value="file8">loanpro-mcp-server/main.go (32.4%)</option>
+				
+				<option value="file9">loanpro-mcp-server/tools/get_customer.go (75.0%)</option>
+				
+				<option value="file10">loanpro-mcp-server/tools/get_loan.go (75.0%)</option>
+				
+				<option value="file11">loanpro-mcp-server/tools/get_loan_payments.go (8.3%)</option>
+				
+				<option value="file12">loanpro-mcp-server/tools/manager.go (77.8%)</option>
+				
+				<option value="file13">loanpro-mcp-server/tools/search_customers.go (6.7%)</option>
+				
+				<option value="file14">loanpro-mcp-server/tools/search_loans.go (77.8%)</option>
+				
+				<option value="file15">loanpro-mcp-server/tools/types.go (50.0%)</option>
+				
+				<option value="file16">loanpro-mcp-server/transport/http.go (84.9%)</option>
+				
+				<option value="file17">loanpro-mcp-server/transport/sse.go (0.0%)</option>
+				
+				<option value="file18">loanpro-mcp-server/transport/stdio.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package loanpro
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log/slog"
+        "net/http"
+        "net/url"
+        "os"
+        "time"
+)
+
+// Client represents a LoanPro API client
+type Client struct {
+        baseURL  string
+        apiKey   string
+        tenantID string
+        client   *http.Client
+}
+
+// NewClient creates a new LoanPro client
+func NewClient(baseURL, apiKey, tenantID string) *Client <span class="cov0" title="0">{
+        return &amp;Client{
+                baseURL:  baseURL,
+                apiKey:   apiKey,
+                tenantID: tenantID,
+                client: &amp;http.Client{
+                        Timeout: 30 * time.Second,
+                },
+        }
+}</span>
+
+// makeRequest makes a GET request to the LoanPro API
+func (c *Client) makeRequest(endpoint string, params map[string]string) ([]byte, error) <span class="cov0" title="0">{
+        return c.makeRequestWithMethod("GET", endpoint, params, nil)
+}</span>
+
+// makePostRequest makes a POST request to the LoanPro API
+func (c *Client) makePostRequest(endpoint string, body any) ([]byte, error) <span class="cov0" title="0">{
+        return c.makeRequestWithMethod("POST", endpoint, nil, body)
+}</span>
+
+// makeRequestWithMethod makes an HTTP request with the specified method
+func (c *Client) makeRequestWithMethod(method, endpoint string, params map[string]string, body any) ([]byte, error) <span class="cov0" title="0">{
+        u, err := url.Parse(c.baseURL + endpoint)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid URL: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(params) &gt; 0 </span><span class="cov0" title="0">{
+                q := u.Query()
+                for key, value := range params </span><span class="cov0" title="0">{
+                        q.Add(key, value)
+                }</span>
+                <span class="cov0" title="0">u.RawQuery = q.Encode()</span>
+        }
+
+        <span class="cov0" title="0">var requestBody io.Reader
+        var bodyStr string
+        if body != nil </span><span class="cov0" title="0">{
+                bodyBytes, err := json.Marshal(body)
+                if err != nil </span><span class="cov0" title="0">{
+                        fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal request body: %v\n", err)
+                        return nil, fmt.Errorf("failed to marshal request body: %w", err)
+                }</span>
+                <span class="cov0" title="0">bodyStr = string(bodyBytes)
+                requestBody = bytes.NewReader(bodyBytes)</span>
+        }
+
+        <span class="cov0" title="0">slog.Debug("Making LoanPro API request", "method", method, "url", u.String())
+        if bodyStr != "" </span><span class="cov0" title="0">{
+                slog.Debug("Request body", "data", bodyStr)
+        }</span>
+
+        <span class="cov0" title="0">req, err := http.NewRequest(method, u.String(), requestBody)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to create HTTP request: %v\n", err)
+                return nil, fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">req.Header.Set("Autopal-Instance-Id", c.tenantID)
+        req.Header.Set("Authorization", c.apiKey)
+        req.Header.Set("Content-Type", "application/json")
+
+        resp, err := c.client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("LoanPro API request failed", "error", err)
+                fmt.Fprintf(os.Stderr, "[ERROR] LoanPro API request failed: %v\n", err)
+                return nil, fmt.Errorf("request failed: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        slog.Debug("Response received", "status", resp.StatusCode, "statusText", resp.Status)
+
+        responseBody, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Failed to read LoanPro response body", "error", err)
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to read LoanPro response body: %v\n", err)
+                return nil, fmt.Errorf("failed to read response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">slog.Debug("Response body", "data", string(responseBody))
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                slog.Error("LoanPro API error", "status", resp.StatusCode, "body", string(responseBody))
+                fmt.Fprintf(os.Stderr, "[ERROR] LoanPro API returned status %d: %s\n", resp.StatusCode, string(responseBody))
+                return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+        }</span>
+
+        <span class="cov0" title="0">return responseBody, nil</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package loanpro
+
+// Helper methods for Customer
+
+// GetID returns the customer ID
+func (c *Customer) GetID() int <span class="cov0" title="0">{
+        return c.ID
+}</span>
+
+// GetFirstName returns the first name
+func (c *Customer) GetFirstName() string <span class="cov0" title="0">{
+        return c.FirstName
+}</span>
+
+// GetLastName returns the last name
+func (c *Customer) GetLastName() string <span class="cov0" title="0">{
+        return c.LastName
+}</span>
+
+// GetEmail returns the email
+func (c *Customer) GetEmail() string <span class="cov0" title="0">{
+        return c.Email
+}</span>
+
+// GetPhone returns the phone number
+func (c *Customer) GetPhone() string <span class="cov0" title="0">{
+        return c.Phone
+}</span>
+
+// GetCreatedDate returns the created date in human-readable format
+func (c *Customer) GetCreatedDate() string <span class="cov0" title="0">{
+        if parsed, err := parseLoanProDateTime(c.CreatedAt); err == nil </span><span class="cov0" title="0">{
+                return parsed
+        }</span>
+        <span class="cov0" title="0">return c.CreatedAt</span>
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package loanpro
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+)
+
+// GetCustomer retrieves a customer by ID
+func (c *Client) GetCustomer(customerID string) (*Customer, error) <span class="cov0" title="0">{
+        body, err := c.makeRequest("/public/api/1/odata.svc/Customers("+customerID+")", nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var response ODataResponse
+        if err := json.Unmarshal(body, &amp;response); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetCustomer response: %v\nResponse body: %s\n", err, string(body))
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">customerData, err := json.Marshal(response.D)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal customer data: %v\n", err)
+                return nil, fmt.Errorf("failed to marshal customer data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var customer Customer
+        if err := json.Unmarshal(customerData, &amp;customer); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse customer struct: %v\nCustomer data: %s\n", err, string(customerData))
+                return nil, fmt.Errorf("failed to parse customer: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;customer, nil</span>
+}
+
+// SearchCustomers searches for customers using the search API
+func (c *Client) SearchCustomers(searchTerm string, limit int) ([]Customer, error) <span class="cov0" title="0">{
+        // Build the search query according to LoanPro Customer Search API format
+        searchBody := map[string]any{
+                "size": limit, // Use 'size' for pagination limit
+        }
+        
+        // Add query filters if provided
+        if searchTerm != "" </span><span class="cov0" title="0">{
+                searchBody["query"] = map[string]any{
+                        "bool": map[string]any{
+                                "should": []map[string]any{
+                                        {
+                                                "query_string": map[string]any{
+                                                        "query":   "*" + searchTerm + "*",
+                                                        "fields":  []string{"firstName", "lastName", "email", "ssn", "companyName"},
+                                                        "default_operator": "and",
+                                                },
+                                        },
+                                        {
+                                                "match": map[string]any{
+                                                        "firstName": searchTerm,
+                                                },
+                                        },
+                                        {
+                                                "match": map[string]any{
+                                                        "lastName": searchTerm,
+                                                },
+                                        },
+                                },
+                                "minimum_should_match": 1,
+                        },
+                }
+        }</span> else<span class="cov0" title="0"> {
+                // If no filter, use match_all query
+                searchBody["query"] = map[string]any{
+                        "match_all": map[string]any{},
+                }
+        }</span>
+
+        <span class="cov0" title="0">body, err := c.makePostRequest("/public/api/1/Customers/Autopal.Search()", searchBody)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var response CustomerSearchResponse
+        if err := json.Unmarshal(body, &amp;response); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse SearchCustomers response: %v\nResponse body: %s\n", err, string(body))
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return response.D.Results, nil</span>
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package loanpro
+
+import "fmt"
+
+// Helper methods for Loan to get string values from json.Number fields
+
+// GetID returns the loan ID as string
+func (l *Loan) GetID() string <span class="cov1" title="1">{
+        return string(l.ID)
+}</span>
+
+// GetDisplayID returns the display ID
+func (l *Loan) GetDisplayID() string <span class="cov1" title="1">{
+        return l.DisplayID
+}</span>
+
+// GetActive returns the active status as string
+func (l *Loan) GetActive() string <span class="cov1" title="1">{
+        return string(l.Active)
+}</span>
+
+// GetArchived returns the archived status as string
+func (l *Loan) GetArchived() string <span class="cov1" title="1">{
+        return string(l.Archived)
+}</span>
+
+// GetDaysPastDue returns days past due from various sources
+func (l *Loan) GetDaysPastDue() string <span class="cov8" title="3">{
+        // Try search result field first
+        if l.DaysPastDue != "" </span><span class="cov1" title="1">{
+                return string(l.DaysPastDue)
+        }</span>
+        // Fallback to StatusArchive for detailed loan view
+        <span class="cov5" title="2">if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov1" title="1">{
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                return string(latest.DaysPastDue)
+        }</span>
+        <span class="cov1" title="1">return "N/A"</span>
+}
+
+// GetLoanAmount returns the loan amount
+func (l *Loan) GetLoanAmount() string <span class="cov5" title="2">{
+        if l.LoanSetup != nil </span><span class="cov1" title="1">{
+                return l.LoanSetup.LoanAmount
+        }</span>
+        <span class="cov1" title="1">return ""</span>
+}
+
+// GetPrincipalBalance returns the principal balance from various sources
+func (l *Loan) GetPrincipalBalance() string <span class="cov8" title="3">{
+        // Try search result field first
+        if l.PrincipalBalance != "" </span><span class="cov1" title="1">{
+                return l.PrincipalBalance
+        }</span>
+        // Fallback to StatusArchive for detailed loan view
+        <span class="cov5" title="2">if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov1" title="1">{
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                return latest.PrincipalBalance
+        }</span>
+        <span class="cov1" title="1">return "N/A"</span>
+}
+
+// GetPayoffAmount returns the payoff amount
+func (l *Loan) GetPayoffAmount() string <span class="cov5" title="2">{
+        if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov1" title="1">{
+                // Get the most recent status archive entry (should be sorted by date)
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                return latest.Payoff
+        }</span>
+        <span class="cov1" title="1">return "N/A"</span>
+}
+
+// GetNextPaymentAmount returns the next payment amount from various sources
+func (l *Loan) GetNextPaymentAmount() string <span class="cov1" title="1">{
+        // Try search result field first
+        if l.NextPaymentAmount != "" </span><span class="cov1" title="1">{
+                return l.NextPaymentAmount
+        }</span>
+        // Try StatusArchive next (more current)
+        <span class="cov0" title="0">if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov0" title="0">{
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                if latest.NextPaymentAmount != "" </span><span class="cov0" title="0">{
+                        return latest.NextPaymentAmount
+                }</span>
+        }
+        // Fallback to LoanSetup
+        <span class="cov0" title="0">if l.LoanSetup != nil </span><span class="cov0" title="0">{
+                return l.LoanSetup.Payment
+        }</span>
+        <span class="cov0" title="0">return ""</span>
+}
+
+// GetLoanStatus returns the loan status from various sources
+func (l *Loan) GetLoanStatus() string <span class="cov8" title="3">{
+        // Try search result field first
+        if l.LoanStatusText != "" </span><span class="cov1" title="1">{
+                return l.LoanStatusText
+        }</span>
+        // Try StatusArchive next (more descriptive)
+        <span class="cov5" title="2">if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov1" title="1">{
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                if latest.LoanStatusText != "" </span><span class="cov1" title="1">{
+                        return latest.LoanStatusText
+                }</span>
+        }
+        // Fallback to status ID from LoanSettings
+        <span class="cov1" title="1">if l.LoanSettings != nil </span><span class="cov0" title="0">{
+                return fmt.Sprintf("Status ID: %s", string(l.LoanSettings.LoanStatusID))
+        }</span>
+        <span class="cov1" title="1">return ""</span>
+}
+
+// GetPrimaryCustomerName returns the primary customer name from various sources
+func (l *Loan) GetPrimaryCustomerName() string <span class="cov10" title="4">{
+        // Try search result field first
+        if l.PrimaryCustomerName != "" </span><span class="cov1" title="1">{
+                return l.PrimaryCustomerName
+        }</span>
+        // Try customers array from search results
+        <span class="cov8" title="3">if len(l.CustomersArray) &gt; 0 </span><span class="cov1" title="1">{
+                return l.CustomersArray[0].FirstName + " " + l.CustomersArray[0].LastName
+        }</span>
+        // Fallback to expanded customer data (detailed view)
+        <span class="cov5" title="2">if l.Customers != nil &amp;&amp; len(l.Customers.Results) &gt; 0 </span><span class="cov1" title="1">{
+                return l.Customers.Results[0].FirstName + " " + l.Customers.Results[0].LastName
+        }</span>
+        <span class="cov1" title="1">return ""</span>
+}
+
+// GetCreatedDate returns the created date in human-readable format
+func (l *Loan) GetCreatedDate() string <span class="cov1" title="1">{
+        if parsed, err := parseLoanProDateTime(l.Created); err == nil </span><span class="cov1" title="1">{
+                return parsed
+        }</span>
+        <span class="cov0" title="0">return l.Created</span>
+}
+
+// GetContractDate returns the contract date in human-readable format
+func (l *Loan) GetContractDate() string <span class="cov1" title="1">{
+        if l.LoanSetup != nil </span><span class="cov1" title="1">{
+                if parsed, err := parseLoanProDate(l.LoanSetup.ContractDate); err == nil </span><span class="cov1" title="1">{
+                        return parsed
+                }</span>
+                <span class="cov0" title="0">return l.LoanSetup.ContractDate</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}
+
+// GetNextPaymentDate returns the next payment date in human-readable format
+func (l *Loan) GetNextPaymentDate() string <span class="cov5" title="2">{
+        // Try search result field first
+        if l.NextPaymentDate != "" </span><span class="cov1" title="1">{
+                if parsed, err := parseLoanProDate(l.NextPaymentDate); err == nil </span><span class="cov1" title="1">{
+                        return parsed
+                }</span>
+                <span class="cov0" title="0">return l.NextPaymentDate</span>
+        }
+        // Try StatusArchive next (more current)
+        <span class="cov1" title="1">if l.StatusArchive != nil &amp;&amp; len(l.StatusArchive.Results) &gt; 0 </span><span class="cov1" title="1">{
+                latest := l.StatusArchive.Results[len(l.StatusArchive.Results)-1]
+                if latest.NextPaymentDate != "" </span><span class="cov1" title="1">{
+                        if parsed, err := parseLoanProDate(latest.NextPaymentDate); err == nil </span><span class="cov1" title="1">{
+                                return parsed
+                        }</span>
+                        <span class="cov0" title="0">return latest.NextPaymentDate</span>
+                }
+        }
+        // Fallback to LoanSetup
+        <span class="cov0" title="0">if l.LoanSetup != nil </span><span class="cov0" title="0">{
+                if parsed, err := parseLoanProDate(l.LoanSetup.FirstPaymentDate); err == nil </span><span class="cov0" title="0">{
+                        return parsed
+                }</span>
+                <span class="cov0" title="0">return l.LoanSetup.FirstPaymentDate</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package loanpro
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+)
+
+// GetLoan retrieves a loan by ID with expanded data
+func (c *Client) GetLoan(loanID string) (*Loan, error) <span class="cov0" title="0">{
+        // Use OData expand to include related data that provides loan amounts, status, and customer info
+        params := map[string]string{
+                "$expand": "LoanSettings,LoanSetup,Customers,StatusArchive",
+        }
+        
+        body, err := c.makeRequest("/public/api/1/odata.svc/Loans("+loanID+")", params)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var response ODataResponse
+        if err := json.Unmarshal(body, &amp;response); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetLoan response: %v\nResponse body: %s\n", err, string(body))
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">loanData, err := json.Marshal(response.D)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal loan data: %v\n", err)
+                return nil, fmt.Errorf("failed to marshal loan data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var loan Loan
+        if err := json.Unmarshal(loanData, &amp;loan); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse loan struct: %v\nLoan data: %s\n", err, string(loanData))
+                return nil, fmt.Errorf("failed to parse loan: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;loan, nil</span>
+}
+
+// SearchLoans searches for loans using the search API
+func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, error) <span class="cov0" title="0">{
+        // Build the search query according to LoanPro API format
+        searchBody := map[string]any{
+                "size": limit, // Use 'size' for pagination limit
+        }
+        
+        // Build query conditions
+        var mustConditions []map[string]any
+        var shouldConditions []map[string]any
+        
+        // Add search term conditions if provided
+        if searchTerm != "" </span><span class="cov0" title="0">{
+                shouldConditions = append(shouldConditions, 
+                        map[string]any{
+                                "query_string": map[string]any{
+                                        "query":   "*" + searchTerm + "*",
+                                        "fields":  []string{"displayId", "primaryCustomerName", "title"},
+                                        "default_operator": "and",
+                                },
+                        },
+                        map[string]any{
+                                "match": map[string]any{
+                                        "displayId": searchTerm,
+                                },
+                        },
+                        map[string]any{
+                                "match": map[string]any{
+                                        "primaryCustomerName": searchTerm,
+                                },
+                        },
+                )
+        }</span>
+        
+        // Add status filter if provided
+        <span class="cov0" title="0">if status != "" </span><span class="cov0" title="0">{
+                mustConditions = append(mustConditions, map[string]any{
+                        "match": map[string]any{
+                                "loanStatusText": status,
+                        },
+                })
+        }</span>
+        
+        // Build the final query
+        <span class="cov0" title="0">if len(mustConditions) &gt; 0 || len(shouldConditions) &gt; 0 </span><span class="cov0" title="0">{
+                boolQuery := map[string]any{}
+                
+                if len(mustConditions) &gt; 0 </span><span class="cov0" title="0">{
+                        if len(mustConditions) == 1 </span><span class="cov0" title="0">{
+                                boolQuery["must"] = mustConditions[0]
+                        }</span> else<span class="cov0" title="0"> {
+                                boolQuery["must"] = mustConditions
+                        }</span>
+                }
+                
+                <span class="cov0" title="0">if len(shouldConditions) &gt; 0 </span><span class="cov0" title="0">{
+                        boolQuery["should"] = shouldConditions
+                        boolQuery["minimum_should_match"] = 1
+                }</span>
+                
+                <span class="cov0" title="0">searchBody["query"] = map[string]any{
+                        "bool": boolQuery,
+                }</span>
+        } else<span class="cov0" title="0"> {
+                // If no filters, use match_all query
+                searchBody["query"] = map[string]any{
+                        "match_all": map[string]any{},
+                }
+        }</span>
+
+        <span class="cov0" title="0">body, err := c.makePostRequest("/public/api/1/Loans/Autopal.Search()", searchBody)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var response SearchResponse
+        if err := json.Unmarshal(body, &amp;response); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse SearchLoans response: %v\nResponse body: %s\n", err, string(body))
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return response.D.Results, nil</span>
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package loanpro
+
+// Helper methods for Payment
+
+// GetID returns the payment ID as string
+func (p *Payment) GetID() string <span class="cov0" title="0">{
+        return string(p.ID)
+}</span>
+
+// GetAmount returns the payment amount
+func (p *Payment) GetAmount() string <span class="cov0" title="0">{
+        return p.Amount
+}</span>
+
+// GetDate returns the payment date (with date parsing if needed)
+func (p *Payment) GetDate() string <span class="cov0" title="0">{
+        if parsed, err := parseLoanProDate(p.Date); err == nil </span><span class="cov0" title="0">{
+                return parsed
+        }</span>
+        <span class="cov0" title="0">return p.Date</span>
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">package loanpro
+
+import (
+        "encoding/json"
+        "fmt"
+        "os"
+)
+
+// GetLoanPayments retrieves payment history for a loan
+func (c *Client) GetLoanPayments(loanID string) ([]Payment, error) <span class="cov0" title="0">{
+        // Use OData expand to get payment history
+        params := map[string]string{
+                "$expand": "Payments",
+        }
+        
+        body, err := c.makeRequest("/public/api/1/odata.svc/Loans("+loanID+")", params)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">var response ODataResponse
+        if err := json.Unmarshal(body, &amp;response); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetLoanPayments response: %v\nResponse body: %s\n", err, string(body))
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">loanData, err := json.Marshal(response.D)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal loan data: %v\n", err)
+                return nil, fmt.Errorf("failed to marshal loan data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var loanWithPayments struct {
+                Payments *PaymentsWrapper `json:"Payments,omitempty"`
+        }
+        
+        if err := json.Unmarshal(loanData, &amp;loanWithPayments); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse loan payments: %v\nLoan data: %s\n", err, string(loanData))
+                return nil, fmt.Errorf("failed to parse loan payments: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if loanWithPayments.Payments != nil </span><span class="cov0" title="0">{
+                return loanWithPayments.Payments.Results, nil
+        }</span>
+        
+        <span class="cov0" title="0">return []Payment{}, nil</span>
+}</pre>
+		
+		<pre class="file" id="file7" style="display: none">package loanpro
+
+import (
+        "encoding/json"
+        "fmt"
+        "regexp"
+        "strconv"
+        "time"
+)
+
+// LoanSettings represents loan settings data
+type LoanSettings struct {
+        ID                json.Number `json:"id"`
+        LoanID            json.Number `json:"loanId"`
+        LoanStatusID      json.Number `json:"loanStatusId"`
+        LoanSubStatusID   json.Number `json:"loanSubStatusId"`
+        AutopayEnabled    json.Number `json:"autopayEnabled"`
+}
+
+// LoanSetup represents loan setup data
+type LoanSetup struct {
+        ID               json.Number `json:"id"`
+        LoanID           json.Number `json:"loanId"`
+        ContractDate     string      `json:"contractDate"`
+        LoanType         string      `json:"loanType"`
+        LoanClass        string      `json:"loanClass"`
+        LoanAmount       string      `json:"loanAmount"`
+        Payment          string      `json:"payment"`
+        FirstPaymentDate string      `json:"firstPaymentDate"`
+        LoanRate         string      `json:"loanRate"`
+        LoanTerm         string      `json:"loanTerm"`
+}
+
+// LoanCustomer represents customer data in loan context
+type LoanCustomer struct {
+        ID        json.Number `json:"id"`
+        FirstName string      `json:"firstName"`
+        LastName  string      `json:"lastName"`
+        Email     string      `json:"email"`
+}
+
+// CustomersWrapper wraps customer results
+type CustomersWrapper struct {
+        Results []LoanCustomer `json:"results"`
+}
+
+// StatusArchiveEntry represents loan status history
+type StatusArchiveEntry struct {
+        ID               json.Number `json:"id"`
+        LoanID           json.Number `json:"loanId"`
+        Date             string      `json:"date"`
+        PrincipalBalance string      `json:"principalBalance"`
+        Payoff           string      `json:"payoff"`
+        AmountDue        string      `json:"amountDue"`
+        DaysPastDue      json.Number `json:"daysPastDue"`
+        NextPaymentDate  string      `json:"nextPaymentDate"`
+        NextPaymentAmount string     `json:"nextPaymentAmount"`
+        LoanStatusText   string      `json:"loanStatusText"`
+}
+
+// StatusArchiveWrapper wraps status archive results
+type StatusArchiveWrapper struct {
+        Results []StatusArchiveEntry `json:"results"`
+}
+
+// Loan represents loan data
+type Loan struct {
+        ID                   json.Number            `json:"id"`
+        DisplayID            string                 `json:"displayId"`
+        Title                string                 `json:"title"`
+        Active               json.Number            `json:"active"`
+        Archived             json.Number            `json:"archived"`
+        Created              string                 `json:"created"`
+        LoanSettings         *LoanSettings          `json:"LoanSettings,omitempty"`
+        LoanSetup            *LoanSetup             `json:"LoanSetup,omitempty"`
+        Customers            *CustomersWrapper      `json:"Customers,omitempty"`
+        StatusArchive        *StatusArchiveWrapper  `json:"StatusArchive,omitempty"`
+        // Fields that appear in search results but not in individual loan retrieval
+        PrimaryCustomerName  string                 `json:"primaryCustomerName,omitempty"`
+        LoanStatusText       string                 `json:"loanStatusText,omitempty"`
+        PrincipalBalance     string                 `json:"principalBalance,omitempty"`
+        DaysPastDue          json.Number            `json:"daysPastDue,omitempty"`
+        NextPaymentAmount    string                 `json:"nextPaymentAmount,omitempty"`
+        NextPaymentDate      string                 `json:"nextPaymentDate,omitempty"`
+        // Raw customers array from search results (lowercase)
+        CustomersArray       []LoanCustomer         `json:"customers,omitempty"`
+}
+
+// Customer represents customer data
+type Customer struct {
+        ID        int    `json:"id"`
+        FirstName string `json:"firstName"`
+        LastName  string `json:"lastName"`
+        Email     string `json:"email"`
+        Phone     string `json:"phone"`
+        CreatedAt string `json:"createdAt"`
+}
+
+// Payment represents payment data
+type Payment struct {
+        ID              json.Number `json:"id"`
+        LoanID          json.Number `json:"loanId"`
+        Date            string      `json:"date"`
+        Amount          string      `json:"amount"`
+        PaymentTypeID   json.Number `json:"paymentTypeId"`
+        PaymentMethodID json.Number `json:"paymentMethodId"`
+        Info            string      `json:"info"`
+        Active          json.Number `json:"active"`
+}
+
+// PaymentsWrapper wraps payment results
+type PaymentsWrapper struct {
+        Results []Payment `json:"results"`
+}
+
+// Response wrapper types
+type ODataResponse struct {
+        D any `json:"d"`
+}
+
+type SearchResponse struct {
+        D struct {
+                Results []Loan `json:"results"`
+                Summary struct {
+                        TotalHits int `json:"totalHits"`
+                        TotalTime int `json:"totalTime"`
+                } `json:"summary"`
+        } `json:"d"`
+}
+
+type CustomerSearchResponse struct {
+        D struct {
+                Results []Customer `json:"results"`
+                Summary struct {
+                        TotalHits int `json:"totalHits"`
+                        TotalTime int `json:"totalTime"`
+                } `json:"summary"`
+        } `json:"d"`
+}
+
+// Utility functions for date parsing
+func parseLoanProDate(dateStr string) (string, error) <span class="cov10" title="8">{
+        if dateStr == "" </span><span class="cov1" title="1">{
+                return "", nil
+        }</span>
+        
+        // Match the LoanPro date format: /Date(1234567890)/
+        <span class="cov9" title="7">re := regexp.MustCompile(`/Date\((\d+)\)/`)
+        matches := re.FindStringSubmatch(dateStr)
+        
+        if len(matches) != 2 </span><span class="cov5" title="3">{
+                // If it doesn't match the Unix format, assume it's already in YYYY-MM-DD format
+                return dateStr, nil
+        }</span>
+        
+        // Parse the Unix timestamp (in seconds)
+        <span class="cov7" title="4">timestamp, err := strconv.ParseInt(matches[1], 10, 64)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to parse timestamp: %w", err)
+        }</span>
+        
+        // Convert to time and format as YYYY-MM-DD
+        <span class="cov7" title="4">t := time.Unix(timestamp, 0).UTC()
+        return t.Format("2006-01-02"), nil</span>
+}
+
+func parseLoanProDateTime(dateStr string) (string, error) <span class="cov7" title="5">{
+        if dateStr == "" </span><span class="cov1" title="1">{
+                return "", nil
+        }</span>
+        
+        // Match the LoanPro date format: /Date(1234567890)/
+        <span class="cov7" title="4">re := regexp.MustCompile(`/Date\((\d+)\)/`)
+        matches := re.FindStringSubmatch(dateStr)
+        
+        if len(matches) != 2 </span><span class="cov4" title="2">{
+                // If it doesn't match the Unix format, assume it's already formatted
+                return dateStr, nil
+        }</span>
+        
+        // Parse the Unix timestamp (in seconds)
+        <span class="cov4" title="2">timestamp, err := strconv.ParseInt(matches[1], 10, 64)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to parse timestamp: %w", err)
+        }</span>
+        
+        // Convert to time and format as YYYY-MM-DD HH:MM:SS UTC
+        <span class="cov4" title="2">t := time.Unix(timestamp, 0).UTC()
+        return t.Format("2006-01-02 15:04:05 UTC"), nil</span>
+}</pre>
+		
+		<pre class="file" id="file8" style="display: none">package main
+
+import (
+        "flag"
+        "fmt"
+        "log"
+        "log/slog"
+        "net/http"
+        "os"
+        "strings"
+
+        "loanpro-mcp-server/loanpro"
+        "loanpro-mcp-server/tools"
+        "loanpro-mcp-server/transport"
+
+        "github.com/gorilla/mux"
+        "github.com/joho/godotenv"
+)
+
+// configureSlog sets up structured logging based on environment variables
+func configureSlog() <span class="cov9" title="7">{
+        // Default to INFO level
+        level := slog.LevelInfo
+        
+        // Parse LOG_LEVEL environment variable
+        if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" </span><span class="cov8" title="6">{
+                switch strings.ToUpper(logLevel) </span>{
+                case "DEBUG":<span class="cov1" title="1">
+                        level = slog.LevelDebug</span>
+                case "INFO":<span class="cov0" title="0">
+                        level = slog.LevelInfo</span>
+                case "WARN", "WARNING":<span class="cov1" title="1">
+                        level = slog.LevelWarn</span>
+                case "ERROR":<span class="cov1" title="1">
+                        level = slog.LevelError</span>
+                default:<span class="cov5" title="3">
+                        fmt.Fprintf(os.Stderr, "Invalid LOG_LEVEL '%s', using INFO\n", logLevel)</span>
+                }
+        }
+        
+        // Configure log format based on LOG_FORMAT environment variable
+        <span class="cov9" title="7">format := strings.ToUpper(os.Getenv("LOG_FORMAT"))
+        
+        var handler slog.Handler
+        opts := &amp;slog.HandlerOptions{
+                Level: level,
+        }
+        
+        switch format </span>{
+        case "JSON":<span class="cov1" title="1">
+                handler = slog.NewJSONHandler(os.Stderr, opts)</span>
+        case "TEXT", "":<span class="cov7" title="5">
+                handler = slog.NewTextHandler(os.Stderr, opts)</span>
+        default:<span class="cov1" title="1">
+                fmt.Fprintf(os.Stderr, "Invalid LOG_FORMAT '%s', using TEXT\n", format)
+                handler = slog.NewTextHandler(os.Stderr, opts)</span>
+        }
+        
+        // Set the default logger
+        <span class="cov9" title="7">slog.SetDefault(slog.New(handler))
+        
+        slog.Info("Logger configured", 
+                "level", level.String(), 
+                "format", strings.ToLower(format))</span>
+}
+
+// MCPServer implements the MCP protocol handler
+type MCPServer struct {
+        toolManager *tools.Manager
+}
+
+// NewMCPServer creates a new MCP server
+func NewMCPServer(loanProClient *loanpro.Client) *MCPServer <span class="cov10" title="8">{
+        return &amp;MCPServer{
+                toolManager: tools.NewManager(&amp;ClientAdapter{client: loanProClient}),
+        }
+}</span>
+
+// ClientAdapter adapts the loanpro.Client to implement the tools.LoanProClient interface
+type ClientAdapter struct {
+        client *loanpro.Client
+}
+
+func (ca *ClientAdapter) GetLoan(id string) (tools.Loan, error) <span class="cov0" title="0">{
+        loan, err := ca.client.GetLoan(id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return loan, nil</span>
+}
+
+func (ca *ClientAdapter) SearchLoans(searchTerm, status string, limit int) ([]tools.Loan, error) <span class="cov0" title="0">{
+        loans, err := ca.client.SearchLoans(searchTerm, status, limit)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        
+        <span class="cov0" title="0">result := make([]tools.Loan, len(loans))
+        for i, loan := range loans </span><span class="cov0" title="0">{
+                result[i] = &amp;loan
+        }</span>
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+func (ca *ClientAdapter) GetCustomer(id string) (tools.Customer, error) <span class="cov0" title="0">{
+        customer, err := ca.client.GetCustomer(id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return customer, nil</span>
+}
+
+func (ca *ClientAdapter) SearchCustomers(searchTerm string, limit int) ([]tools.Customer, error) <span class="cov0" title="0">{
+        customers, err := ca.client.SearchCustomers(searchTerm, limit)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        
+        <span class="cov0" title="0">result := make([]tools.Customer, len(customers))
+        for i, customer := range customers </span><span class="cov0" title="0">{
+                result[i] = &amp;customer
+        }</span>
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+func (ca *ClientAdapter) GetLoanPayments(loanID string) ([]tools.Payment, error) <span class="cov0" title="0">{
+        payments, err := ca.client.GetLoanPayments(loanID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        
+        <span class="cov0" title="0">result := make([]tools.Payment, len(payments))
+        for i, payment := range payments </span><span class="cov0" title="0">{
+                result[i] = &amp;payment
+        }</span>
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+// HandleMCPRequest handles MCP protocol requests
+func (s *MCPServer) HandleMCPRequest(req transport.MCPRequest) transport.MCPResponse <span class="cov9" title="7">{
+        switch req.Method </span>{
+        case "initialize":<span class="cov1" title="1">
+                slog.Info("Processing initialize request", "method", req.Method)
+
+                // Extract client's protocol version from params
+                clientProtocolVersion := "2024-11-05" // fallback default
+                if params, ok := req.Params["protocolVersion"].(string); ok </span><span class="cov1" title="1">{
+                        clientProtocolVersion = params
+                        slog.Info("Client protocol version", "version", clientProtocolVersion)
+                }</span>
+
+                <span class="cov1" title="1">response := transport.MCPResponse{
+                        JSONRPC: "2.0",
+                        Result: map[string]any{
+                                "protocolVersion": clientProtocolVersion, // Use client's version
+                                "capabilities": map[string]any{
+                                        "tools": map[string]any{},
+                                },
+                                "serverInfo": map[string]any{
+                                        "name":    "loanpro-mcp-server",
+                                        "version": "1.0.0",
+                                },
+                        },
+                        ID: req.ID,
+                }
+
+                slog.Info("Responding with protocol version", "version", clientProtocolVersion)
+                return response</span>
+
+        case "initialized":<span class="cov1" title="1">
+                slog.Debug("Received initialized notification (legacy)")
+                // This is a notification, no response needed
+                return transport.MCPResponse{}</span> // Empty response indicates no reply
+
+        case "notifications/initialized":<span class="cov1" title="1"> // Changed from "initialized"
+                slog.Debug("Received initialized notification")
+                return transport.MCPResponse{}</span> // No response for notifications
+
+        case "resources/list":<span class="cov1" title="1">
+                return transport.MCPResponse{
+                        JSONRPC: "2.0",
+                        Result: map[string]any{
+                                "resources": []any{}, // Empty resources list
+                        },
+                        ID: req.ID,
+                }</span>
+
+        case "prompts/list":<span class="cov1" title="1">
+                return transport.MCPResponse{
+                        JSONRPC: "2.0",
+                        Result: map[string]any{
+                                "prompts": []any{}, // Empty prompts list
+                        },
+                        ID: req.ID,
+                }</span>
+
+        case "tools/list":<span class="cov1" title="1">
+                toolsList := s.toolManager.GetAllTools()
+                return transport.MCPResponse{
+                        JSONRPC: "2.0",
+                        Result: map[string]any{
+                                "tools": toolsList,
+                        },
+                        ID: req.ID,
+                }</span>
+
+        case "tools/call":<span class="cov0" title="0">
+                toolName := req.Params["name"].(string)
+                arguments := req.Params["arguments"].(map[string]any)
+                
+                response := s.toolManager.ExecuteTool(toolName, arguments)
+                // Convert tools.MCPResponse to transport.MCPResponse
+                return transport.MCPResponse{
+                        JSONRPC: response.JSONRPC,
+                        Result:  response.Result,
+                        Error: func() *transport.MCPError </span><span class="cov0" title="0">{
+                                if response.Error != nil </span><span class="cov0" title="0">{
+                                        return &amp;transport.MCPError{
+                                                Code:    response.Error.Code,
+                                                Message: response.Error.Message,
+                                        }
+                                }</span>
+                                <span class="cov0" title="0">return nil</span>
+                        }(),
+                        ID: req.ID,
+                }
+
+        default:<span class="cov1" title="1">
+                return transport.MCPResponse{
+                        JSONRPC: "2.0",
+                        Error:   &amp;transport.MCPError{Code: -32601, Message: "Method not found"},
+                        ID:      req.ID,
+                }</span>
+        }
+}
+
+func main() <span class="cov0" title="0">{
+        stdioMode := flag.Bool("stdio", false, "Use stdio transport instead of HTTP/SSE")
+        transportType := flag.String("transport", "http", "Transport type: stdio, sse, or http")
+        flag.Parse()
+
+        godotenv.Load()
+        
+        // Configure structured logging
+        configureSlog()
+
+        loanProClient := loanpro.NewClient(
+                os.Getenv("LOANPRO_API_URL"),
+                os.Getenv("LOANPRO_API_KEY"),
+                os.Getenv("LOANPRO_TENANT_ID"),
+        )
+
+        server := NewMCPServer(loanProClient)
+
+        // Handle stdio mode for backwards compatibility
+        if *stdioMode </span><span class="cov0" title="0">{
+                *transportType = "stdio"
+        }</span>
+
+        <span class="cov0" title="0">switch *transportType </span>{
+        case "stdio":<span class="cov0" title="0">
+                // Run in stdio mode for MCP clients
+                slog.Info("Starting MCP server", "transport", "stdio")
+                stdioTransport := transport.NewStdioTransport(server)
+                if err := stdioTransport.Run(); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("Stdio transport failed", "error", err)
+                        log.Fatal(err)
+                }</span>
+
+        case "sse":<span class="cov0" title="0">
+                // Run HTTP server with SSE transport
+                slog.Info("Starting MCP server", "transport", "sse")
+                r := mux.NewRouter()
+                sseTransport := transport.NewSSETransport(server)
+                r.HandleFunc("/sse", sseTransport.HandleSSE).Methods("GET")
+                r.HandleFunc("/", sseTransport.HandleRoot).Methods("GET")
+
+                port := os.Getenv("PORT")
+                if port == "" </span><span class="cov0" title="0">{
+                        port = "8080"
+                }</span>
+
+                <span class="cov0" title="0">slog.Info("MCP Server starting", "transport", "sse", "port", port)
+                log.Fatal(http.ListenAndServe(":"+port, r))</span>
+
+        case "http":<span class="cov0" title="0">
+                // Run HTTP server with streamable HTTP transport
+                slog.Info("Starting MCP server", "transport", "http")
+                r := mux.NewRouter()
+                httpTransport := transport.NewHTTPTransport(server)
+                
+                // MCP endpoints
+                r.HandleFunc("/mcp", httpTransport.HandleMCP).Methods("POST", "OPTIONS")
+                
+                // Info endpoints
+                r.HandleFunc("/", httpTransport.HandleRoot).Methods("GET")
+                r.HandleFunc("/health", httpTransport.HandleHealth).Methods("GET")
+
+                port := os.Getenv("PORT")
+                if port == "" </span><span class="cov0" title="0">{
+                        port = "8080"
+                }</span>
+
+                <span class="cov0" title="0">slog.Info("MCP Server starting", 
+                        "transport", "http", 
+                        "port", port,
+                        "endpoints", map[string]string{
+                                "POST /mcp": "MCP requests",
+                                "GET /": "Server info", 
+                                "GET /health": "Health check",
+                        })
+                log.Fatal(http.ListenAndServe(":"+port, r))</span>
+
+        default:<span class="cov0" title="0">
+                slog.Error("Unknown transport type", "type", *transportType, "valid", []string{"stdio", "sse", "http"})
+                log.Fatalf("Unknown transport type: %s. Use stdio, sse, or http", *transportType)</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file9" style="display: none">package tools
+
+import "fmt"
+
+// GetCustomerTool returns the get_customer tool definition
+func GetCustomerTool() Tool <span class="cov8" title="1">{
+        return Tool{
+                Name:        "get_customer",
+                Description: "Get customer information by ID",
+                InputSchema: map[string]any{
+                        "type": "object",
+                        "properties": map[string]any{
+                                "customer_id": map[string]any{
+                                        "type":        "string",
+                                        "description": "The customer ID to retrieve",
+                                },
+                        },
+                        "required": []string{"customer_id"},
+                },
+        }
+}</span>
+
+// executeGetCustomer handles the get_customer tool execution
+func (m *Manager) executeGetCustomer(arguments map[string]any) MCPResponse <span class="cov8" title="1">{
+        customerID := arguments["customer_id"].(string)
+        customer, err := m.client.GetCustomer(customerID)
+        if err != nil </span><span class="cov0" title="0">{
+                LogError("get_customer", err, fmt.Sprintf("for ID %s", customerID))
+                return CreateErrorResponse(-1, err.Error(), nil)
+        }</span>
+
+        <span class="cov8" title="1">text := fmt.Sprintf("Customer Details:\nID: %d\nName: %s %s\nEmail: %s\nPhone: %s\nCreated: %s",
+                customer.GetID(), customer.GetFirstName(), customer.GetLastName(), customer.GetEmail(), customer.GetPhone(), customer.GetCreatedDate())
+
+        return CreateSuccessResponse(text, nil)</span>
+}</pre>
+		
+		<pre class="file" id="file10" style="display: none">package tools
+
+import "fmt"
+
+// GetLoanTool returns the get_loan tool definition
+func GetLoanTool() Tool <span class="cov8" title="1">{
+        return Tool{
+                Name:        "get_loan",
+                Description: "Get loan information by ID",
+                InputSchema: map[string]any{
+                        "type": "object",
+                        "properties": map[string]any{
+                                "loan_id": map[string]any{
+                                        "type":        "string",
+                                        "description": "The loan ID to retrieve",
+                                },
+                        },
+                        "required": []string{"loan_id"},
+                },
+        }
+}</span>
+
+// executeGetLoan handles the get_loan tool execution
+func (m *Manager) executeGetLoan(arguments map[string]any) MCPResponse <span class="cov8" title="1">{
+        loanID := arguments["loan_id"].(string)
+        loan, err := m.client.GetLoan(loanID)
+        if err != nil </span><span class="cov0" title="0">{
+                LogError("get_loan", err, fmt.Sprintf("for ID %s", loanID))
+                return CreateErrorResponse(-1, err.Error(), nil)
+        }</span>
+
+        <span class="cov8" title="1">text := fmt.Sprintf("Loan Details:\nID: %s\nDisplay ID: %s\nStatus: %s\nCustomer: %s\nBalance: $%s",
+                loan.GetID(), loan.GetDisplayID(), loan.GetLoanStatus(), loan.GetPrimaryCustomerName(), loan.GetPrincipalBalance())
+
+        return CreateSuccessResponse(text, nil)</span>
+}</pre>
+		
+		<pre class="file" id="file11" style="display: none">package tools
+
+import "fmt"
+
+// GetLoanPaymentsTool returns the get_loan_payments tool definition
+func GetLoanPaymentsTool() Tool <span class="cov8" title="1">{
+        return Tool{
+                Name:        "get_loan_payments",
+                Description: "Get payment history for a loan",
+                InputSchema: map[string]any{
+                        "type": "object",
+                        "properties": map[string]any{
+                                "loan_id": map[string]any{
+                                        "type":        "string",
+                                        "description": "The loan ID to get payment history for",
+                                },
+                        },
+                        "required": []string{"loan_id"},
+                },
+        }
+}</span>
+
+// executeGetLoanPayments handles the get_loan_payments tool execution
+func (m *Manager) executeGetLoanPayments(arguments map[string]any) MCPResponse <span class="cov0" title="0">{
+        loanID := arguments["loan_id"].(string)
+        payments, err := m.client.GetLoanPayments(loanID)
+        if err != nil </span><span class="cov0" title="0">{
+                LogError("get_loan_payments", err, fmt.Sprintf("for loan ID %s", loanID))
+                return CreateErrorResponse(-1, err.Error(), nil)
+        }</span>
+
+        <span class="cov0" title="0">text := fmt.Sprintf("Payment History for Loan %s:\n", loanID)
+        if len(payments) == 0 </span><span class="cov0" title="0">{
+                text += "No payments found.\n"
+        }</span> else<span class="cov0" title="0"> {
+                for _, payment := range payments </span><span class="cov0" title="0">{
+                        text += fmt.Sprintf("- Date: %s, Amount: $%s, ID: %s\n", 
+                                payment.GetDate(), payment.GetAmount(), payment.GetID())
+                }</span>
+        }
+
+        <span class="cov0" title="0">return CreateSuccessResponse(text, nil)</span>
+}</pre>
+		
+		<pre class="file" id="file12" style="display: none">package tools
+
+// Manager handles MCP tool operations
+type Manager struct {
+        client LoanProClient
+}
+
+// NewManager creates a new tool manager
+func NewManager(client LoanProClient) *Manager <span class="cov10" title="5">{
+        return &amp;Manager{
+                client: client,
+        }
+}</span>
+
+// GetAllTools returns all available MCP tools
+func (m *Manager) GetAllTools() []Tool <span class="cov1" title="1">{
+        return []Tool{
+                GetLoanTool(),
+                SearchLoansTool(),
+                GetCustomerTool(),
+                SearchCustomersTool(),
+                GetLoanPaymentsTool(),
+        }
+}</span>
+
+// ExecuteTool executes the specified tool with given arguments
+func (m *Manager) ExecuteTool(toolName string, arguments map[string]any) MCPResponse <span class="cov8" title="4">{
+        switch toolName </span>{
+        case "get_loan":<span class="cov1" title="1">
+                return m.executeGetLoan(arguments)</span>
+        case "search_loans":<span class="cov1" title="1">
+                return m.executeSearchLoans(arguments)</span>
+        case "get_customer":<span class="cov1" title="1">
+                return m.executeGetCustomer(arguments)</span>
+        case "search_customers":<span class="cov0" title="0">
+                return m.executeSearchCustomers(arguments)</span>
+        case "get_loan_payments":<span class="cov0" title="0">
+                return m.executeGetLoanPayments(arguments)</span>
+        default:<span class="cov1" title="1">
+                return MCPResponse{
+                        JSONRPC: "2.0",
+                        Error:   &amp;MCPError{Code: -32601, Message: "Tool not found"},
+                }</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file13" style="display: none">package tools
+
+import "fmt"
+
+// SearchCustomersTool returns the search_customers tool definition
+func SearchCustomersTool() Tool <span class="cov8" title="1">{
+        return Tool{
+                Name:        "search_customers",
+                Description: "Search customers with a search term",
+                InputSchema: map[string]any{
+                        "type": "object",
+                        "properties": map[string]any{
+                                "search_term": map[string]any{
+                                        "type":        "string",
+                                        "description": "Search term to match against customer names, email, or SSN",
+                                },
+                                "limit": map[string]any{
+                                        "type":        "number",
+                                        "description": "Maximum number of results",
+                                        "default":     10,
+                                },
+                        },
+                },
+        }
+}</span>
+
+// executeSearchCustomers handles the search_customers tool execution
+func (m *Manager) executeSearchCustomers(arguments map[string]any) MCPResponse <span class="cov0" title="0">{
+        searchTerm := ""
+        if term, ok := arguments["search_term"].(string); ok </span><span class="cov0" title="0">{
+                searchTerm = term
+        }</span>
+        <span class="cov0" title="0">limit := 10
+        if l, ok := arguments["limit"].(float64); ok </span><span class="cov0" title="0">{
+                limit = int(l)
+        }</span>
+
+        <span class="cov0" title="0">customers, err := m.client.SearchCustomers(searchTerm, limit)
+        if err != nil </span><span class="cov0" title="0">{
+                LogError("search_customers", err, fmt.Sprintf("with term='%s', limit=%d", searchTerm, limit))
+                return CreateErrorResponse(-1, err.Error(), nil)
+        }</span>
+
+        <span class="cov0" title="0">text := "Customers:\n"
+        for _, customer := range customers </span><span class="cov0" title="0">{
+                text += fmt.Sprintf("- ID: %d, Name: %s %s, Email: %s\n", customer.GetID(), customer.GetFirstName(), customer.GetLastName(), customer.GetEmail())
+        }</span>
+
+        <span class="cov0" title="0">return CreateSuccessResponse(text, nil)</span>
+}</pre>
+		
+		<pre class="file" id="file14" style="display: none">package tools
+
+import "fmt"
+
+// SearchLoansTool returns the search_loans tool definition
+func SearchLoansTool() Tool <span class="cov8" title="1">{
+        return Tool{
+                Name:        "search_loans",
+                Description: "Search loans with filters and search terms",
+                InputSchema: map[string]any{
+                        "type": "object",
+                        "properties": map[string]any{
+                                "search_term": map[string]any{
+                                        "type":        "string",
+                                        "description": "Search term to match against customer name, display ID, or title",
+                                },
+                                "status": map[string]any{
+                                        "type":        "string",
+                                        "description": "Loan status filter",
+                                },
+                                "limit": map[string]any{
+                                        "type":        "number",
+                                        "description": "Maximum number of results",
+                                        "default":     10,
+                                },
+                        },
+                },
+        }
+}</span>
+
+// executeSearchLoans handles the search_loans tool execution
+func (m *Manager) executeSearchLoans(arguments map[string]any) MCPResponse <span class="cov8" title="1">{
+        searchTerm := ""
+        if term, ok := arguments["search_term"].(string); ok </span><span class="cov8" title="1">{
+                searchTerm = term
+        }</span>
+        <span class="cov8" title="1">status := ""
+        if s, ok := arguments["status"].(string); ok </span><span class="cov0" title="0">{
+                status = s
+        }</span>
+        <span class="cov8" title="1">limit := 10
+        if l, ok := arguments["limit"].(float64); ok </span><span class="cov8" title="1">{
+                limit = int(l)
+        }</span>
+
+        <span class="cov8" title="1">loans, err := m.client.SearchLoans(searchTerm, status, limit)
+        if err != nil </span><span class="cov0" title="0">{
+                LogError("search_loans", err, fmt.Sprintf("with term='%s', status='%s', limit=%d", searchTerm, status, limit))
+                return CreateErrorResponse(-1, err.Error(), nil)
+        }</span>
+
+        <span class="cov8" title="1">text := "Loans:\n"
+        for _, loan := range loans </span><span class="cov0" title="0">{
+                text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s\n", 
+                        loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetLoanStatus(), loan.GetPrincipalBalance())
+        }</span>
+
+        <span class="cov8" title="1">return CreateSuccessResponse(text, nil)</span>
+}</pre>
+		
+		<pre class="file" id="file15" style="display: none">package tools
+
+import (
+        "fmt"
+        "log/slog"
+        "os"
+)
+
+// Tool represents an MCP tool definition
+type Tool struct {
+        Name        string         `json:"name"`
+        Description string         `json:"description"`
+        InputSchema map[string]any `json:"inputSchema"`
+}
+
+// MCPResponse represents a response to an MCP request
+type MCPResponse struct {
+        JSONRPC string    `json:"jsonrpc"`
+        Result  any       `json:"result,omitempty"`
+        Error   *MCPError `json:"error,omitempty"`
+        ID      any       `json:"id"`
+}
+
+// MCPError represents an error in MCP protocol
+type MCPError struct {
+        Code    int    `json:"code"`
+        Message string `json:"message"`
+}
+
+// LoanProClient interface for dependency injection
+type LoanProClient interface {
+        GetLoan(id string) (Loan, error)
+        SearchLoans(searchTerm, status string, limit int) ([]Loan, error)
+        GetCustomer(id string) (Customer, error)
+        SearchCustomers(searchTerm string, limit int) ([]Customer, error)
+        GetLoanPayments(loanID string) ([]Payment, error)
+}
+
+// Loan represents loan data - simplified interface for tools
+type Loan interface {
+        GetID() string
+        GetDisplayID() string
+        GetPrimaryCustomerName() string
+        GetLoanStatus() string
+        GetPrincipalBalance() string
+}
+
+// Customer represents customer data - simplified interface for tools
+type Customer interface {
+        GetID() int
+        GetFirstName() string
+        GetLastName() string
+        GetEmail() string
+        GetPhone() string
+        GetCreatedDate() string
+}
+
+// Payment represents payment data - simplified interface for tools
+type Payment interface {
+        GetID() string
+        GetAmount() string
+        GetDate() string
+}
+
+// Helper function to create error responses
+func CreateErrorResponse(code int, message string, id any) MCPResponse <span class="cov1" title="1">{
+        return MCPResponse{
+                JSONRPC: "2.0",
+                Error:   &amp;MCPError{Code: code, Message: message},
+                ID:      id,
+        }
+}</span>
+
+// Helper function to create success responses
+func CreateSuccessResponse(text string, id any) MCPResponse <span class="cov10" title="4">{
+        return MCPResponse{
+                JSONRPC: "2.0",
+                Result: map[string]any{
+                        "content": []map[string]any{
+                                {
+                                        "type": "text",
+                                        "text": text,
+                                },
+                        },
+                },
+                ID: id,
+        }
+}</span>
+
+// Helper function to log errors to stderr
+func LogError(toolName string, err error, details string) <span class="cov0" title="0">{
+        slog.Error("Tool execution failed", "tool", toolName, "error", err, "details", details)
+        fmt.Fprintf(os.Stderr, "[ERROR] %s failed %s: %v\n", toolName, details, err)
+}</pre>
+		
+		<pre class="file" id="file16" style="display: none">package transport
+
+import (
+        "encoding/json"
+        "fmt"
+        "io"
+        "log/slog"
+        "net/http"
+        "os"
+)
+
+// HTTPTransport handles MCP communication over streamable HTTP
+type HTTPTransport struct {
+        handler MCPHandler
+}
+
+// NewHTTPTransport creates a new HTTP transport
+func NewHTTPTransport(handler MCPHandler) *HTTPTransport <span class="cov10" title="7">{
+        return &amp;HTTPTransport{
+                handler: handler,
+        }
+}</span>
+
+// HandleMCP handles HTTP POST requests with MCP messages
+func (t *HTTPTransport) HandleMCP(w http.ResponseWriter, r *http.Request) <span class="cov8" title="5">{
+        // Set CORS headers
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+        // Handle preflight requests
+        if r.Method == "OPTIONS" </span><span class="cov1" title="1">{
+                w.WriteHeader(http.StatusOK)
+                return
+        }</span>
+
+        <span class="cov7" title="4">if r.Method != "POST" </span><span class="cov1" title="1">{
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+                return
+        }</span>
+
+        // Read request body
+        <span class="cov6" title="3">body, err := io.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Error reading HTTP request body", "error", err)
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to read HTTP request body: %v\n", err)
+                http.Error(w, "Failed to read request body", http.StatusBadRequest)
+                return
+        }</span>
+        <span class="cov6" title="3">defer r.Body.Close()
+
+        slog.Debug("Received HTTP request", "data", string(body))
+
+        // Parse MCP request
+        var req MCPRequest
+        if err := json.Unmarshal(body, &amp;req); err != nil </span><span class="cov1" title="1">{
+                slog.Error("JSON parse error", "error", err, "input", string(body))
+                fmt.Fprintf(os.Stderr, "[ERROR] JSON parse error: %v\nInput: %s\n", err, string(body))
+                t.sendError(w, -32700, "Parse error", nil)
+                return
+        }</span>
+
+        <span class="cov4" title="2">slog.Debug("Processing HTTP request", "method", req.Method, "id", req.ID)
+
+        // Handle the MCP request
+        response := t.handler.HandleMCPRequest(req)
+
+        // Don't send response for notifications (empty JSONRPC means no response)
+        if response.JSONRPC == "" </span><span class="cov1" title="1">{
+                slog.Debug("Notification processed, no response sent")
+                w.WriteHeader(http.StatusOK)
+                return
+        }</span>
+
+        // Send response
+        <span class="cov1" title="1">w.Header().Set("Content-Type", "application/json")
+        responseData, err := json.Marshal(response)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Marshal error", "error", err)
+                fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal response: %v\n", err)
+                t.sendError(w, -32603, "Internal error", req.ID)
+                return
+        }</span>
+
+        <span class="cov1" title="1">slog.Debug("Sending HTTP response", "data", string(responseData))
+        w.WriteHeader(http.StatusOK)
+        w.Write(responseData)</span>
+}
+
+// HandleRoot handles the root endpoint for server info
+func (t *HTTPTransport) HandleRoot(w http.ResponseWriter, r *http.Request) <span class="cov1" title="1">{
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        
+        json.NewEncoder(w).Encode(map[string]string{
+                "name":      "LoanPro MCP Server",
+                "version":   "1.0.0",
+                "transport": "http",
+        })
+}</span>
+
+// HandleHealth handles health check endpoint
+func (t *HTTPTransport) HandleHealth(w http.ResponseWriter, r *http.Request) <span class="cov1" title="1">{
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        
+        json.NewEncoder(w).Encode(map[string]string{
+                "status": "healthy",
+                "transport": "http",
+        })
+}</span>
+
+// sendError sends an error response
+func (t *HTTPTransport) sendError(w http.ResponseWriter, code int, message string, id any) <span class="cov1" title="1">{
+        slog.Error("Sending HTTP error response", "code", code, "message", message, "id", id)
+        
+        errorResponse := MCPResponse{
+                JSONRPC: "2.0",
+                Error: &amp;MCPError{
+                        Code:    code,
+                        Message: message,
+                },
+                ID: id,
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        data, _ := json.Marshal(errorResponse)
+        slog.Debug("HTTP error response", "data", string(data))
+        w.WriteHeader(http.StatusOK) // Still return 200 for JSON-RPC errors
+        w.Write(data)
+}</pre>
+		
+		<pre class="file" id="file17" style="display: none">package transport
+
+import (
+        "encoding/json"
+        "fmt"
+        "net/http"
+)
+
+// SSETransport handles MCP communication over Server-Sent Events
+type SSETransport struct {
+        handler MCPHandler
+}
+
+// NewSSETransport creates a new SSE transport
+func NewSSETransport(handler MCPHandler) *SSETransport <span class="cov0" title="0">{
+        return &amp;SSETransport{
+                handler: handler,
+        }
+}</span>
+
+// HandleSSE handles SSE connections for MCP communication
+func (t *SSETransport) HandleSSE(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "text/event-stream")
+        w.Header().Set("Cache-Control", "no-cache")
+        w.Header().Set("Connection", "keep-alive")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+
+        flusher, ok := w.(http.Flusher)
+        if !ok </span><span class="cov0" title="0">{
+                http.Error(w, "SSE not supported", http.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov0" title="0">fmt.Fprintf(w, "event: ready\n")
+        fmt.Fprintf(w, "data: {\"type\":\"ready\"}\n\n")
+        flusher.Flush()
+
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-r.Context().Done():<span class="cov0" title="0">
+                        return</span>
+                default:<span class="cov0" title="0">
+                        var req MCPRequest
+                        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">response := t.handler.HandleMCPRequest(req)
+                        data, _ := json.Marshal(response)
+
+                        fmt.Fprintf(w, "event: message\n")
+                        fmt.Fprintf(w, "data: %s\n\n", data)
+                        flusher.Flush()</span>
+                }
+        }
+}
+
+// HandleRoot handles the root endpoint for server info
+func (t *SSETransport) HandleRoot(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(map[string]string{
+                "name":      "LoanPro MCP Server",
+                "version":   "1.0.0",
+                "transport": "sse",
+        })
+}</pre>
+		
+		<pre class="file" id="file18" style="display: none">package transport
+
+import (
+        "bufio"
+        "encoding/json"
+        "fmt"
+        "io"
+        "log/slog"
+        "os"
+)
+
+// StdioTransport handles MCP communication over stdin/stdout
+type StdioTransport struct {
+        handler MCPHandler
+        reader  *bufio.Reader
+        writer  io.Writer
+}
+
+// NewStdioTransport creates a new stdio transport
+func NewStdioTransport(handler MCPHandler) *StdioTransport <span class="cov0" title="0">{
+        return &amp;StdioTransport{
+                handler: handler,
+                reader:  bufio.NewReader(os.Stdin),
+                writer:  os.Stdout,
+        }
+}</span>
+
+// Run starts the stdio transport loop
+func (t *StdioTransport) Run() error <span class="cov0" title="0">{
+        slog.Debug("Starting stdio transport")
+        for </span><span class="cov0" title="0">{
+                line, err := t.reader.ReadBytes('\n')
+                if err != nil </span><span class="cov0" title="0">{
+                        if err == io.EOF </span><span class="cov0" title="0">{
+                                slog.Debug("EOF received, shutting down")
+                                return nil
+                        }</span>
+                        <span class="cov0" title="0">slog.Error("Error reading from stdin", "error", err)
+                        fmt.Fprintf(os.Stderr, "[ERROR] Failed to read from stdin: %v\n", err)
+                        return fmt.Errorf("failed to read from stdin: %w", err)</span>
+                }
+
+                <span class="cov0" title="0">slog.Debug("Received message", "data", string(line))
+
+                var req MCPRequest
+                if err := json.Unmarshal(line, &amp;req); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("JSON parse error", "error", err, "input", string(line))
+                        fmt.Fprintf(os.Stderr, "[ERROR] JSON parse error: %v\nInput: %s\n", err, string(line))
+                        t.sendError(-32700, "Parse error", nil)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">slog.Debug("Processing request", "method", req.Method, "id", req.ID)
+                response := t.handler.HandleMCPRequest(req)
+                
+                // Don't send response for notifications (empty JSONRPC means no response)
+                if response.JSONRPC == "" </span><span class="cov0" title="0">{
+                        slog.Debug("Notification processed, no response sent")
+                        continue</span>
+                }
+                
+                <span class="cov0" title="0">responseData, err := json.Marshal(response)
+                if err != nil </span><span class="cov0" title="0">{
+                        slog.Error("Marshal error", "error", err)
+                        fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal response: %v\n", err)
+                        t.sendError(-32603, "Internal error", req.ID)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">slog.Debug("Sending response", "data", string(responseData))
+                fmt.Fprintf(t.writer, "%s\n", responseData)</span>
+        }
+}
+
+// sendError sends an error response
+func (t *StdioTransport) sendError(code int, message string, id any) <span class="cov0" title="0">{
+        slog.Error("Sending error response", "code", code, "message", message, "id", id)
+        errorResponse := MCPResponse{
+                JSONRPC: "2.0",
+                Error: &amp;MCPError{
+                        Code:    code,
+                        Message: message,
+                },
+                ID: id,
+        }
+        
+        data, _ := json.Marshal(errorResponse)
+        slog.Debug("Error response", "data", string(data))
+        fmt.Fprintf(t.writer, "%s\n", data)
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

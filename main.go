@@ -1,137 +1,155 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+
+	"loanpro-mcp-server/loanpro"
+	"loanpro-mcp-server/tools"
+	"loanpro-mcp-server/transport"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
-type MCPServer struct {
-	loanProClient *LoanProClient
-}
-
-type MCPRequest struct {
-	JSONRPC string         `json:"jsonrpc"`
-	Method  string         `json:"method"`
-	Params  map[string]any `json:"params,omitempty"`
-	ID      any            `json:"id"`
-}
-
-type MCPResponse struct {
-	JSONRPC string    `json:"jsonrpc"`
-	Result  any       `json:"result,omitempty"`
-	Error   *MCPError `json:"error,omitempty"`
-	ID      any       `json:"id"`
-}
-
-type MCPError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-func main() {
-	stdioMode := flag.Bool("stdio", false, "Use stdio transport instead of SSE")
-	flag.Parse()
-
-	godotenv.Load()
-
-	loanProClient := NewLoanProClient(
-		os.Getenv("LOANPRO_API_URL"),
-		os.Getenv("LOANPRO_API_KEY"),
-		os.Getenv("LOANPRO_TENANT_ID"),
-	)
-
-	server := &MCPServer{
-		loanProClient: loanProClient,
-	}
-
-	if *stdioMode {
-		// Run in stdio mode for MCP clients
-		log.Println("[MAIN] Starting in stdio mode for MCP client")
-		transport := NewStdioTransport(server)
-		if err := transport.Run(); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		// Run HTTP server with SSE transport
-		r := mux.NewRouter()
-		r.HandleFunc("/sse", server.handleSSE).Methods("GET")
-		r.HandleFunc("/", server.handleRoot).Methods("GET")
-
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8080"
-		}
-
-		fmt.Printf("MCP Server starting on port %s\n", port)
-		log.Fatal(http.ListenAndServe(":"+port, r))
-	}
-}
-
-func (s *MCPServer) handleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"name":      "LoanPro MCP Server",
-		"version":   "1.0.0",
-		"transport": "sse",
-	})
-}
-
-func (s *MCPServer) handleSSE(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "SSE not supported", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintf(w, "event: ready\n")
-	fmt.Fprintf(w, "data: {\"type\":\"ready\"}\n\n")
-	flusher.Flush()
-
-	for {
-		select {
-		case <-r.Context().Done():
-			return
+// configureSlog sets up structured logging based on environment variables
+func configureSlog() {
+	// Default to INFO level
+	level := slog.LevelInfo
+	
+	// Parse LOG_LEVEL environment variable
+	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+		switch strings.ToUpper(logLevel) {
+		case "DEBUG":
+			level = slog.LevelDebug
+		case "INFO":
+			level = slog.LevelInfo
+		case "WARN", "WARNING":
+			level = slog.LevelWarn
+		case "ERROR":
+			level = slog.LevelError
 		default:
-			var req MCPRequest
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				continue
-			}
-
-			response := s.handleMCPRequest(req)
-			data, _ := json.Marshal(response)
-
-			fmt.Fprintf(w, "event: message\n")
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			flusher.Flush()
+			fmt.Fprintf(os.Stderr, "Invalid LOG_LEVEL '%s', using INFO\n", logLevel)
 		}
+	}
+	
+	// Configure log format based on LOG_FORMAT environment variable
+	format := strings.ToUpper(os.Getenv("LOG_FORMAT"))
+	
+	var handler slog.Handler
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+	
+	switch format {
+	case "JSON":
+		handler = slog.NewJSONHandler(os.Stderr, opts)
+	case "TEXT", "":
+		handler = slog.NewTextHandler(os.Stderr, opts)
+	default:
+		fmt.Fprintf(os.Stderr, "Invalid LOG_FORMAT '%s', using TEXT\n", format)
+		handler = slog.NewTextHandler(os.Stderr, opts)
+	}
+	
+	// Set the default logger
+	slog.SetDefault(slog.New(handler))
+	
+	slog.Info("Logger configured", 
+		"level", level.String(), 
+		"format", strings.ToLower(format))
+}
+
+// MCPServer implements the MCP protocol handler
+type MCPServer struct {
+	toolManager *tools.Manager
+}
+
+// NewMCPServer creates a new MCP server
+func NewMCPServer(loanProClient *loanpro.Client) *MCPServer {
+	return &MCPServer{
+		toolManager: tools.NewManager(&ClientAdapter{client: loanProClient}),
 	}
 }
 
-func (s *MCPServer) handleMCPRequest(req MCPRequest) MCPResponse {
+// ClientAdapter adapts the loanpro.Client to implement the tools.LoanProClient interface
+type ClientAdapter struct {
+	client *loanpro.Client
+}
+
+func (ca *ClientAdapter) GetLoan(id string) (tools.Loan, error) {
+	loan, err := ca.client.GetLoan(id)
+	if err != nil {
+		return nil, err
+	}
+	return loan, nil
+}
+
+func (ca *ClientAdapter) SearchLoans(searchTerm, status string, limit int) ([]tools.Loan, error) {
+	loans, err := ca.client.SearchLoans(searchTerm, status, limit)
+	if err != nil {
+		return nil, err
+	}
+	
+	result := make([]tools.Loan, len(loans))
+	for i, loan := range loans {
+		result[i] = &loan
+	}
+	return result, nil
+}
+
+func (ca *ClientAdapter) GetCustomer(id string) (tools.Customer, error) {
+	customer, err := ca.client.GetCustomer(id)
+	if err != nil {
+		return nil, err
+	}
+	return customer, nil
+}
+
+func (ca *ClientAdapter) SearchCustomers(searchTerm string, limit int) ([]tools.Customer, error) {
+	customers, err := ca.client.SearchCustomers(searchTerm, limit)
+	if err != nil {
+		return nil, err
+	}
+	
+	result := make([]tools.Customer, len(customers))
+	for i, customer := range customers {
+		result[i] = &customer
+	}
+	return result, nil
+}
+
+func (ca *ClientAdapter) GetLoanPayments(loanID string) ([]tools.Payment, error) {
+	payments, err := ca.client.GetLoanPayments(loanID)
+	if err != nil {
+		return nil, err
+	}
+	
+	result := make([]tools.Payment, len(payments))
+	for i, payment := range payments {
+		result[i] = &payment
+	}
+	return result, nil
+}
+
+// HandleMCPRequest handles MCP protocol requests
+func (s *MCPServer) HandleMCPRequest(req transport.MCPRequest) transport.MCPResponse {
 	switch req.Method {
 	case "initialize":
-		log.Println("[MCP] Processing initialize request")
+		slog.Info("Processing initialize request", "method", req.Method)
 
 		// Extract client's protocol version from params
 		clientProtocolVersion := "2024-11-05" // fallback default
 		if params, ok := req.Params["protocolVersion"].(string); ok {
 			clientProtocolVersion = params
-			log.Printf("[MCP] Client protocol version: %s", clientProtocolVersion)
+			slog.Info("Client protocol version", "version", clientProtocolVersion)
 		}
 
-		response := MCPResponse{
+		response := transport.MCPResponse{
 			JSONRPC: "2.0",
 			Result: map[string]any{
 				"protocolVersion": clientProtocolVersion, // Use client's version
@@ -146,20 +164,20 @@ func (s *MCPServer) handleMCPRequest(req MCPRequest) MCPResponse {
 			ID: req.ID,
 		}
 
-		log.Printf("[MCP] Responding with protocol version: %s", clientProtocolVersion)
+		slog.Info("Responding with protocol version", "version", clientProtocolVersion)
 		return response
 
 	case "initialized":
+		slog.Debug("Received initialized notification (legacy)")
 		// This is a notification, no response needed
-		return MCPResponse{} // Empty response indicates no reply
+		return transport.MCPResponse{} // Empty response indicates no reply
 
 	case "notifications/initialized": // Changed from "initialized"
-		log.Println("[MCP] Received initialized notification")
-		fmt.Fprintf(os.Stderr, "[MCP] Initialized notification processed\n")
-		return MCPResponse{} // No response for notifications
+		slog.Debug("Received initialized notification")
+		return transport.MCPResponse{} // No response for notifications
 
 	case "resources/list":
-		return MCPResponse{
+		return transport.MCPResponse{
 			JSONRPC: "2.0",
 			Result: map[string]any{
 				"resources": []any{}, // Empty resources list
@@ -168,7 +186,7 @@ func (s *MCPServer) handleMCPRequest(req MCPRequest) MCPResponse {
 		}
 
 	case "prompts/list":
-		return MCPResponse{
+		return transport.MCPResponse{
 			JSONRPC: "2.0",
 			Result: map[string]any{
 				"prompts": []any{}, // Empty prompts list
@@ -177,93 +195,11 @@ func (s *MCPServer) handleMCPRequest(req MCPRequest) MCPResponse {
 		}
 
 	case "tools/list":
-		return MCPResponse{
+		toolsList := s.toolManager.GetAllTools()
+		return transport.MCPResponse{
 			JSONRPC: "2.0",
 			Result: map[string]any{
-				"tools": []map[string]any{
-					{
-						"name":        "get_loan",
-						"description": "Get loan information by ID",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"loan_id": map[string]any{
-									"type":        "string",
-									"description": "The loan ID to retrieve",
-								},
-							},
-							"required": []string{"loan_id"},
-						},
-					},
-					{
-						"name":        "search_loans",
-						"description": "Search loans with filters and search terms",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"search_term": map[string]any{
-									"type":        "string",
-									"description": "Search term to match against customer name, display ID, or title",
-								},
-								"status": map[string]any{
-									"type":        "string",
-									"description": "Loan status filter",
-								},
-								"limit": map[string]any{
-									"type":        "number",
-									"description": "Maximum number of results",
-									"default":     10,
-								},
-							},
-						},
-					},
-					{
-						"name":        "get_customer",
-						"description": "Get customer information by ID",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"customer_id": map[string]any{
-									"type":        "string",
-									"description": "The customer ID to retrieve",
-								},
-							},
-							"required": []string{"customer_id"},
-						},
-					},
-					{
-						"name":        "search_customers",
-						"description": "Search customers with a search term",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"search_term": map[string]any{
-									"type":        "string",
-									"description": "Search term to match against customer names, email, or SSN",
-								},
-								"limit": map[string]any{
-									"type":        "number",
-									"description": "Maximum number of results",
-									"default":     10,
-								},
-							},
-						},
-					},
-					{
-						"name":        "get_loan_payments",
-						"description": "Get payment history for a loan",
-						"inputSchema": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"loan_id": map[string]any{
-									"type":        "string",
-									"description": "The loan ID to get payment history for",
-								},
-							},
-							"required": []string{"loan_id"},
-						},
-					},
-				},
+				"tools": toolsList,
 			},
 			ID: req.ID,
 		}
@@ -271,188 +207,112 @@ func (s *MCPServer) handleMCPRequest(req MCPRequest) MCPResponse {
 	case "tools/call":
 		toolName := req.Params["name"].(string)
 		arguments := req.Params["arguments"].(map[string]any)
-
-		switch toolName {
-		case "get_loan":
-			loanID := arguments["loan_id"].(string)
-			loan, err := s.loanProClient.GetLoan(loanID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ERROR] get_loan failed for ID %s: %v\n", loanID, err)
-				return MCPResponse{
-					JSONRPC: "2.0",
-					Error:   &MCPError{Code: -1, Message: err.Error()},
-					ID:      req.ID,
-				}
-			}
-			return MCPResponse{
-				JSONRPC: "2.0",
-				Result: map[string]any{
-					"content": []map[string]any{
-						{
-							"type": "text",
-							"text": fmt.Sprintf("Loan Details:\nID: %s\nDisplay ID: %s\nTitle: %s\nStatus: %s\nCustomer: %s\nAmount: $%s\nBalance: $%s\nPayoff: $%s\nNext Payment: $%s on %s\nDays Past Due: %s\nCreated: %s\nContract Date: %s",
-								loan.GetID(), loan.DisplayID, loan.Title, loan.GetLoanStatus(), loan.GetPrimaryCustomerName(), loan.GetLoanAmount(), loan.GetPrincipalBalance(), loan.GetPayoffAmount(), loan.GetNextPaymentAmount(), loan.GetNextPaymentDate(), loan.GetDaysPastDue(), loan.GetCreatedDate(), loan.GetContractDate()),
-						},
-					},
-				},
-				ID: req.ID,
-			}
-
-		case "search_loans":
-			searchTerm := ""
-			if term, ok := arguments["search_term"].(string); ok {
-				searchTerm = term
-			}
-			status := ""
-			if s, ok := arguments["status"].(string); ok {
-				status = s
-			}
-			limit := 10
-			if l, ok := arguments["limit"].(float64); ok {
-				limit = int(l)
-			}
-
-			loans, err := s.loanProClient.SearchLoans(searchTerm, status, limit)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ERROR] search_loans failed with term='%s', status='%s', limit=%d: %v\n", searchTerm, status, limit, err)
-				return MCPResponse{
-					JSONRPC: "2.0",
-					Error:   &MCPError{Code: -1, Message: err.Error()},
-					ID:      req.ID,
-				}
-			}
-
-			text := "Loans:\n"
-			for _, loan := range loans {
-				text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s\n", loan.GetID(), loan.DisplayID, loan.GetPrimaryCustomerName(), loan.GetLoanStatus(), loan.GetPrincipalBalance())
-			}
-
-			return MCPResponse{
-				JSONRPC: "2.0",
-				Result: map[string]any{
-					"content": []map[string]any{
-						{
-							"type": "text",
-							"text": text,
-						},
-					},
-				},
-				ID: req.ID,
-			}
-
-		case "get_customer":
-			customerID := arguments["customer_id"].(string)
-			customer, err := s.loanProClient.GetCustomer(customerID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ERROR] get_customer failed for ID %s: %v\n", customerID, err)
-				return MCPResponse{
-					JSONRPC: "2.0",
-					Error:   &MCPError{Code: -1, Message: err.Error()},
-					ID:      req.ID,
-				}
-			}
-			return MCPResponse{
-				JSONRPC: "2.0",
-				Result: map[string]any{
-					"content": []map[string]any{
-						{
-							"type": "text",
-							"text": fmt.Sprintf("Customer Details:\nID: %d\nName: %s %s\nEmail: %s\nPhone: %s\nCreated: %s",
-								customer.ID, customer.FirstName, customer.LastName, customer.Email, customer.Phone, customer.GetCreatedDate()),
-						},
-					},
-				},
-				ID: req.ID,
-			}
-		case "search_customers":
-			searchTerm := ""
-			if term, ok := arguments["search_term"].(string); ok {
-				searchTerm = term
-			}
-			limit := 10
-			if l, ok := arguments["limit"].(float64); ok {
-				limit = int(l)
-			}
-
-			customers, err := s.loanProClient.SearchCustomers(searchTerm, limit)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ERROR] search_customers failed with term='%s', limit=%d: %v\n", searchTerm, limit, err)
-				return MCPResponse{
-					JSONRPC: "2.0",
-					Error:   &MCPError{Code: -1, Message: err.Error()},
-					ID:      req.ID,
-				}
-			}
-
-			text := "Customers:\n"
-			for _, customer := range customers {
-				text += fmt.Sprintf("- ID: %d, Name: %s %s, Email: %s\n", customer.ID, customer.FirstName, customer.LastName, customer.Email)
-			}
-
-			return MCPResponse{
-				JSONRPC: "2.0",
-				Result: map[string]any{
-					"content": []map[string]any{
-						{
-							"type": "text",
-							"text": text,
-						},
-					},
-				},
-				ID: req.ID,
-			}
 		
-		case "get_loan_payments":
-			loanID := arguments["loan_id"].(string)
-			payments, err := s.loanProClient.GetLoanPayments(loanID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ERROR] get_loan_payments failed for loan ID %s: %v\n", loanID, err)
-				return MCPResponse{
-					JSONRPC: "2.0",
-					Error:   &MCPError{Code: -1, Message: err.Error()},
-					ID:      req.ID,
-				}
-			}
-
-			text := fmt.Sprintf("Payment History for Loan %s:\n", loanID)
-			if len(payments) == 0 {
-				text += "No payments found.\n"
-			} else {
-				for _, payment := range payments {
-					date := payment.Date
-					if parsed, err := parseLoanProDate(payment.Date); err == nil {
-						date = parsed
+		response := s.toolManager.ExecuteTool(toolName, arguments)
+		// Convert tools.MCPResponse to transport.MCPResponse
+		return transport.MCPResponse{
+			JSONRPC: response.JSONRPC,
+			Result:  response.Result,
+			Error: func() *transport.MCPError {
+				if response.Error != nil {
+					return &transport.MCPError{
+						Code:    response.Error.Code,
+						Message: response.Error.Message,
 					}
-					text += fmt.Sprintf("- Date: %s, Amount: $%s, ID: %s\n", 
-						date, payment.Amount, string(payment.ID))
 				}
-			}
-
-			return MCPResponse{
-				JSONRPC: "2.0",
-				Result: map[string]any{
-					"content": []map[string]any{
-						{
-							"type": "text",
-							"text": text,
-						},
-					},
-				},
-				ID: req.ID,
-			}
+				return nil
+			}(),
+			ID: req.ID,
 		}
 
 	default:
-		return MCPResponse{
+		return transport.MCPResponse{
 			JSONRPC: "2.0",
-			Error:   &MCPError{Code: -32601, Message: "Method not found"},
+			Error:   &transport.MCPError{Code: -32601, Message: "Method not found"},
 			ID:      req.ID,
 		}
 	}
+}
 
-	return MCPResponse{
-		JSONRPC: "2.0",
-		Error:   &MCPError{Code: -1, Message: "Unknown error"},
-		ID:      req.ID,
+func main() {
+	stdioMode := flag.Bool("stdio", false, "Use stdio transport instead of HTTP/SSE")
+	transportType := flag.String("transport", "http", "Transport type: stdio, sse, or http")
+	flag.Parse()
+
+	godotenv.Load()
+	
+	// Configure structured logging
+	configureSlog()
+
+	loanProClient := loanpro.NewClient(
+		os.Getenv("LOANPRO_API_URL"),
+		os.Getenv("LOANPRO_API_KEY"),
+		os.Getenv("LOANPRO_TENANT_ID"),
+	)
+
+	server := NewMCPServer(loanProClient)
+
+	// Handle stdio mode for backwards compatibility
+	if *stdioMode {
+		*transportType = "stdio"
+	}
+
+	switch *transportType {
+	case "stdio":
+		// Run in stdio mode for MCP clients
+		slog.Info("Starting MCP server", "transport", "stdio")
+		stdioTransport := transport.NewStdioTransport(server)
+		if err := stdioTransport.Run(); err != nil {
+			slog.Error("Stdio transport failed", "error", err)
+			log.Fatal(err)
+		}
+
+	case "sse":
+		// Run HTTP server with SSE transport
+		slog.Info("Starting MCP server", "transport", "sse")
+		r := mux.NewRouter()
+		sseTransport := transport.NewSSETransport(server)
+		r.HandleFunc("/sse", sseTransport.HandleSSE).Methods("GET")
+		r.HandleFunc("/", sseTransport.HandleRoot).Methods("GET")
+
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+
+		slog.Info("MCP Server starting", "transport", "sse", "port", port)
+		log.Fatal(http.ListenAndServe(":"+port, r))
+
+	case "http":
+		// Run HTTP server with streamable HTTP transport
+		slog.Info("Starting MCP server", "transport", "http")
+		r := mux.NewRouter()
+		httpTransport := transport.NewHTTPTransport(server)
+		
+		// MCP endpoints
+		r.HandleFunc("/mcp", httpTransport.HandleMCP).Methods("POST", "OPTIONS")
+		
+		// Info endpoints
+		r.HandleFunc("/", httpTransport.HandleRoot).Methods("GET")
+		r.HandleFunc("/health", httpTransport.HandleHealth).Methods("GET")
+
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+
+		slog.Info("MCP Server starting", 
+			"transport", "http", 
+			"port", port,
+			"endpoints", map[string]string{
+				"POST /mcp": "MCP requests",
+				"GET /": "Server info", 
+				"GET /health": "Health check",
+			})
+		log.Fatal(http.ListenAndServe(":"+port, r))
+
+	default:
+		slog.Error("Unknown transport type", "type", *transportType, "valid", []string{"stdio", "sse", "http"})
+		log.Fatalf("Unknown transport type: %s. Use stdio, sse, or http", *transportType)
 	}
 }

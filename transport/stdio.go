@@ -1,76 +1,80 @@
-package main
+package transport
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 )
 
+// StdioTransport handles MCP communication over stdin/stdout
 type StdioTransport struct {
-	server *MCPServer
-	reader *bufio.Reader
-	writer io.Writer
+	handler MCPHandler
+	reader  *bufio.Reader
+	writer  io.Writer
 }
 
-func NewStdioTransport(server *MCPServer) *StdioTransport {
+// NewStdioTransport creates a new stdio transport
+func NewStdioTransport(handler MCPHandler) *StdioTransport {
 	return &StdioTransport{
-		server: server,
-		reader: bufio.NewReader(os.Stdin),
-		writer: os.Stdout,
+		handler: handler,
+		reader:  bufio.NewReader(os.Stdin),
+		writer:  os.Stdout,
 	}
 }
 
+// Run starts the stdio transport loop
 func (t *StdioTransport) Run() error {
-	log.Println("[STDIO] Starting stdio transport")
+	slog.Debug("Starting stdio transport")
 	for {
 		line, err := t.reader.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
-				log.Println("[STDIO] EOF received, shutting down")
+				slog.Debug("EOF received, shutting down")
 				return nil
 			}
-			log.Printf("[STDIO] Error reading from stdin: %v", err)
+			slog.Error("Error reading from stdin", "error", err)
 			fmt.Fprintf(os.Stderr, "[ERROR] Failed to read from stdin: %v\n", err)
 			return fmt.Errorf("failed to read from stdin: %w", err)
 		}
 
-		log.Printf("[STDIO] Received: %s", string(line))
+		slog.Debug("Received message", "data", string(line))
 
 		var req MCPRequest
 		if err := json.Unmarshal(line, &req); err != nil {
-			log.Printf("[STDIO] Parse error: %v", err)
+			slog.Error("JSON parse error", "error", err, "input", string(line))
 			fmt.Fprintf(os.Stderr, "[ERROR] JSON parse error: %v\nInput: %s\n", err, string(line))
 			t.sendError(-32700, "Parse error", nil)
 			continue
 		}
 
-		log.Printf("[STDIO] Processing request: method=%s, id=%v", req.Method, req.ID)
-		response := t.server.handleMCPRequest(req)
+		slog.Debug("Processing request", "method", req.Method, "id", req.ID)
+		response := t.handler.HandleMCPRequest(req)
 		
 		// Don't send response for notifications (empty JSONRPC means no response)
 		if response.JSONRPC == "" {
-			log.Printf("[STDIO] Notification processed, no response sent")
+			slog.Debug("Notification processed, no response sent")
 			continue
 		}
 		
 		responseData, err := json.Marshal(response)
 		if err != nil {
-			log.Printf("[STDIO] Marshal error: %v", err)
+			slog.Error("Marshal error", "error", err)
 			fmt.Fprintf(os.Stderr, "[ERROR] Failed to marshal response: %v\n", err)
 			t.sendError(-32603, "Internal error", req.ID)
 			continue
 		}
 
-		log.Printf("[STDIO] Sending response: %s", string(responseData))
+		slog.Debug("Sending response", "data", string(responseData))
 		fmt.Fprintf(t.writer, "%s\n", responseData)
 	}
 }
 
+// sendError sends an error response
 func (t *StdioTransport) sendError(code int, message string, id any) {
-	log.Printf("[STDIO] Sending error: code=%d, message=%s, id=%v", code, message, id)
+	slog.Error("Sending error response", "code", code, "message", message, "id", id)
 	errorResponse := MCPResponse{
 		JSONRPC: "2.0",
 		Error: &MCPError{
@@ -81,6 +85,6 @@ func (t *StdioTransport) sendError(code int, message string, id any) {
 	}
 	
 	data, _ := json.Marshal(errorResponse)
-	log.Printf("[STDIO] Error response: %s", string(data))
+	slog.Debug("Error response", "data", string(data))
 	fmt.Fprintf(t.writer, "%s\n", data)
 }
