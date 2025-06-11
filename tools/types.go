@@ -43,6 +43,7 @@ type Loan interface {
 	GetPrimaryCustomerName() string
 	GetLoanStatus() string
 	GetPrincipalBalance() string
+	GetPayoffAmount() string
 }
 
 // Customer represents customer data - simplified interface for tools
