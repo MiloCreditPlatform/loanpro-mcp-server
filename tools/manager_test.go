@@ -18,6 +18,7 @@ type MockLoan struct {
 	primaryCustomerName  string
 	loanStatus           string
 	principalBalance     string
+	payoffAmount         string
 }
 
 func (m MockLoan) GetID() string                    { return m.id }
@@ -25,6 +26,7 @@ func (m MockLoan) GetDisplayID() string             { return m.displayID }
 func (m MockLoan) GetPrimaryCustomerName() string   { return m.primaryCustomerName }
 func (m MockLoan) GetLoanStatus() string            { return m.loanStatus }
 func (m MockLoan) GetPrincipalBalance() string      { return m.principalBalance }
+func (m MockLoan) GetPayoffAmount() string          { return m.payoffAmount }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -121,6 +123,7 @@ func createMockClient() *MockLoanProClient {
 				primaryCustomerName: "John Doe",
 				loanStatus:          "Active",
 				principalBalance:    "25000.00",
+				payoffAmount:        "25250.00",
 			},
 			"456": {
 				id:                  "456",
@@ -128,6 +131,7 @@ func createMockClient() *MockLoanProClient {
 				primaryCustomerName: "Jane Smith",
 				loanStatus:          "Current",
 				principalBalance:    "18500.00",
+				payoffAmount:        "18650.00",
 			},
 		},
 		customers: map[string]MockCustomer{
