@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -370,12 +371,12 @@ func TestManager_ExecuteTool_GetLoanPayments(t *testing.T) {
 	}
 
 	// Verify that the response contains payment status
-	if !contains(text, "Status: Active") {
+	if !strings.Contains(text, "Status: Active") {
 		t.Errorf("Expected response to contain 'Status: Active', got: %s", text)
 	}
 
 	// Verify that both payments are listed
-	if !contains(text, "ID: p1") || !contains(text, "ID: p2") {
+	if !strings.Contains(text, "ID: p1") || !strings.Contains(text, "ID: p2") {
 		t.Errorf("Expected response to contain payment IDs p1 and p2, got: %s", text)
 	}
 }
@@ -424,21 +425,7 @@ func TestManager_ExecuteTool_GetLoanPayments_NoPayments(t *testing.T) {
 	}
 
 	// Verify that the response indicates no payments found
-	if !contains(text, "No payments found") {
+	if !strings.Contains(text, "No payments found") {
 		t.Errorf("Expected response to contain 'No payments found', got: %s", text)
 	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
-}
-
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
