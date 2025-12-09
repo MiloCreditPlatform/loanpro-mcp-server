@@ -12,7 +12,7 @@ func (c *Client) GetLoanPayments(loanID string) ([]Payment, error) {
 	params := map[string]string{
 		"$expand": "Payments",
 	}
-	
+
 	body, err := c.makeRequest("/public/api/1/odata.svc/Loans("+loanID+")", params)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (c *Client) GetLoanPayments(loanID string) ([]Payment, error) {
 	var loanWithPayments struct {
 		Payments *PaymentsWrapper `json:"Payments,omitempty"`
 	}
-	
+
 	if err := json.Unmarshal(loanData, &loanWithPayments); err != nil {
 		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse loan payments: %v\nLoan data: %s\n", err, string(loanData))
 		return nil, fmt.Errorf("failed to parse loan payments: %w", err)
@@ -42,6 +42,6 @@ func (c *Client) GetLoanPayments(loanID string) ([]Payment, error) {
 	if loanWithPayments.Payments != nil {
 		return loanWithPayments.Payments.Results, nil
 	}
-	
+
 	return []Payment{}, nil
 }

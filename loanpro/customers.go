@@ -40,7 +40,7 @@ func (c *Client) SearchCustomers(searchTerm string, limit int) ([]Customer, erro
 	searchBody := map[string]any{
 		"size": limit, // Use 'size' for pagination limit
 	}
-	
+
 	// Add query filters if provided
 	if searchTerm != "" {
 		searchBody["query"] = map[string]any{
@@ -48,8 +48,8 @@ func (c *Client) SearchCustomers(searchTerm string, limit int) ([]Customer, erro
 				"should": []map[string]any{
 					{
 						"query_string": map[string]any{
-							"query":   "*" + searchTerm + "*",
-							"fields":  []string{"firstName", "lastName", "email", "ssn", "companyName"},
+							"query":            "*" + searchTerm + "*",
+							"fields":           []string{"firstName", "lastName", "email", "ssn", "companyName"},
 							"default_operator": "and",
 						},
 					},

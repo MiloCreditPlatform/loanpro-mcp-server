@@ -61,6 +61,7 @@ type Payment interface {
 	GetID() string
 	GetAmount() string
 	GetDate() string
+	GetStatus() string
 }
 
 // Helper function to create error responses

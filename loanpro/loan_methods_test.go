@@ -26,11 +26,11 @@ func TestLoan_GetMethods(t *testing.T) {
 			Results: []StatusArchiveEntry{
 				{
 					PrincipalBalance:  "24500.00",
-					Payoff:           "24750.00",
-					DaysPastDue:      json.Number("0"),
+					Payoff:            "24750.00",
+					DaysPastDue:       json.Number("0"),
 					NextPaymentAmount: "500.00",
-					NextPaymentDate:  "/Date(1430421732)/",
-					LoanStatusText:   "Current",
+					NextPaymentDate:   "/Date(1430421732)/",
+					LoanStatusText:    "Current",
 				},
 			},
 		},
@@ -133,10 +133,10 @@ func TestLoan_FallbackBehavior(t *testing.T) {
 			Results: []StatusArchiveEntry{
 				{
 					PrincipalBalance:  "15000.00",
-					DaysPastDue:      json.Number("30"),
-					LoanStatusText:   "Past Due",
+					DaysPastDue:       json.Number("30"),
+					LoanStatusText:    "Past Due",
 					NextPaymentAmount: "300.00",
-					NextPaymentDate:  "/Date(1430421732)/",
+					NextPaymentDate:   "/Date(1430421732)/",
 				},
 			},
 		},

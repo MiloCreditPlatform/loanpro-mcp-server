@@ -21,7 +21,7 @@ import (
 func configureSlog() {
 	// Default to INFO level
 	level := slog.LevelInfo
-	
+
 	// Parse LOG_LEVEL environment variable
 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
 		switch strings.ToUpper(logLevel) {
@@ -37,15 +37,15 @@ func configureSlog() {
 			fmt.Fprintf(os.Stderr, "Invalid LOG_LEVEL '%s', using INFO\n", logLevel)
 		}
 	}
-	
+
 	// Configure log format based on LOG_FORMAT environment variable
 	format := strings.ToUpper(os.Getenv("LOG_FORMAT"))
-	
+
 	var handler slog.Handler
 	opts := &slog.HandlerOptions{
 		Level: level,
 	}
-	
+
 	switch format {
 	case "JSON":
 		handler = slog.NewJSONHandler(os.Stderr, opts)
@@ -55,12 +55,12 @@ func configureSlog() {
 		fmt.Fprintf(os.Stderr, "Invalid LOG_FORMAT '%s', using TEXT\n", format)
 		handler = slog.NewTextHandler(os.Stderr, opts)
 	}
-	
+
 	// Set the default logger
 	slog.SetDefault(slog.New(handler))
-	
-	slog.Info("Logger configured", 
-		"level", level.String(), 
+
+	slog.Info("Logger configured",
+		"level", level.String(),
 		"format", strings.ToLower(format))
 }
 
@@ -94,7 +94,7 @@ func (ca *ClientAdapter) SearchLoans(searchTerm, status string, limit int) ([]to
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := make([]tools.Loan, len(loans))
 	for i, loan := range loans {
 		result[i] = &loan
@@ -115,7 +115,7 @@ func (ca *ClientAdapter) SearchCustomers(searchTerm string, limit int) ([]tools.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := make([]tools.Customer, len(customers))
 	for i, customer := range customers {
 		result[i] = &customer
@@ -128,7 +128,7 @@ func (ca *ClientAdapter) GetLoanPayments(loanID string) ([]tools.Payment, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := make([]tools.Payment, len(payments))
 	for i, payment := range payments {
 		result[i] = &payment
@@ -207,7 +207,7 @@ func (s *MCPServer) HandleMCPRequest(req transport.MCPRequest) transport.MCPResp
 	case "tools/call":
 		toolName := req.Params["name"].(string)
 		arguments := req.Params["arguments"].(map[string]any)
-		
+
 		response := s.toolManager.ExecuteTool(toolName, arguments)
 		// Convert tools.MCPResponse to transport.MCPResponse
 		return transport.MCPResponse{
@@ -240,7 +240,7 @@ func main() {
 	flag.Parse()
 
 	godotenv.Load()
-	
+
 	// Configure structured logging
 	configureSlog()
 
@@ -288,10 +288,10 @@ func main() {
 		slog.Info("Starting MCP server", "transport", "http")
 		r := mux.NewRouter()
 		httpTransport := transport.NewHTTPTransport(server)
-		
+
 		// MCP endpoints
 		r.HandleFunc("/mcp", httpTransport.HandleMCP).Methods("POST", "OPTIONS")
-		
+
 		// Info endpoints
 		r.HandleFunc("/", httpTransport.HandleRoot).Methods("GET")
 		r.HandleFunc("/health", httpTransport.HandleHealth).Methods("GET")
@@ -301,12 +301,12 @@ func main() {
 			port = "8080"
 		}
 
-		slog.Info("MCP Server starting", 
-			"transport", "http", 
+		slog.Info("MCP Server starting",
+			"transport", "http",
 			"port", port,
 			"endpoints", map[string]string{
-				"POST /mcp": "MCP requests",
-				"GET /": "Server info", 
+				"POST /mcp":   "MCP requests",
+				"GET /":       "Server info",
 				"GET /health": "Health check",
 			})
 		log.Fatal(http.ListenAndServe(":"+port, r))

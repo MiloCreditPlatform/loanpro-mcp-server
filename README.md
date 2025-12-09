@@ -132,7 +132,7 @@ Get payment history for a loan.
 **Parameters:**
 - `loan_id` (required): The loan ID to get payment history for
 
-**Returns:** Chronological list of payments made on the loan with dates and amounts.
+**Returns:** Chronological list of payments made on the loan with dates, amounts, payment IDs, and status (Active/Inactive).
 
 ## Usage Examples
 

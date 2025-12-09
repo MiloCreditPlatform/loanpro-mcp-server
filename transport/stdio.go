@@ -52,13 +52,13 @@ func (t *StdioTransport) Run() error {
 
 		slog.Debug("Processing request", "method", req.Method, "id", req.ID)
 		response := t.handler.HandleMCPRequest(req)
-		
+
 		// Don't send response for notifications (empty JSONRPC means no response)
 		if response.JSONRPC == "" {
 			slog.Debug("Notification processed, no response sent")
 			continue
 		}
-		
+
 		responseData, err := json.Marshal(response)
 		if err != nil {
 			slog.Error("Marshal error", "error", err)
@@ -83,7 +83,7 @@ func (t *StdioTransport) sendError(code int, message string, id any) {
 		},
 		ID: id,
 	}
-	
+
 	data, _ := json.Marshal(errorResponse)
 	slog.Debug("Error response", "data", string(data))
 	fmt.Fprintf(t.writer, "%s\n", data)

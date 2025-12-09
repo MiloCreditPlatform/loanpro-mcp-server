@@ -34,8 +34,8 @@ func (m *Manager) executeGetLoanPayments(arguments map[string]any) MCPResponse {
 		text += "No payments found.\n"
 	} else {
 		for _, payment := range payments {
-			text += fmt.Sprintf("- Date: %s, Amount: $%s, ID: %s\n", 
-				payment.GetDate(), payment.GetAmount(), payment.GetID())
+			text += fmt.Sprintf("- Date: %s, Amount: $%s, ID: %s, Status: %s\n",
+				payment.GetDate(), payment.GetAmount(), payment.GetID(), payment.GetStatus())
 		}
 	}
 
