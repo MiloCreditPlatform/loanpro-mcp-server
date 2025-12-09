@@ -73,6 +73,19 @@ func (t *Transaction) GetEscrowAmount() string {
 
 // HasPaymentBreakdown checks if the transaction has payment breakdown data
 func (t *Transaction) HasPaymentBreakdown() bool {
-	return t.PrincipalAmount != "" || t.InterestAmount != "" || 
-		t.FeesAmount != "" || t.EscrowAmount != ""
+	// Check for non-empty and non-zero amounts
+	hasData := false
+	if t.PrincipalAmount != "" && t.PrincipalAmount != "0" && t.PrincipalAmount != "0.00" {
+		hasData = true
+	}
+	if t.InterestAmount != "" && t.InterestAmount != "0" && t.InterestAmount != "0.00" {
+		hasData = true
+	}
+	if t.FeesAmount != "" && t.FeesAmount != "0" && t.FeesAmount != "0.00" {
+		hasData = true
+	}
+	if t.EscrowAmount != "" && t.EscrowAmount != "0" && t.EscrowAmount != "0.00" {
+		hasData = true
+	}
+	return hasData
 }

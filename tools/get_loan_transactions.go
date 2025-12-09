@@ -46,17 +46,20 @@ func (m *Manager) executeGetLoanTransactions(arguments map[string]any) MCPRespon
 			// Add payment breakdown if available
 			if txn.HasPaymentBreakdown() {
 				text += "  Applied:"
-				if txn.GetPrincipalAmount() != "" && txn.GetPrincipalAmount() != "0" && txn.GetPrincipalAmount() != "0.00" {
-					text += fmt.Sprintf(" Principal: $%s", txn.GetPrincipalAmount())
+				breakdownParts := []struct {
+					label  string
+					amount string
+				}{
+					{"Principal", txn.GetPrincipalAmount()},
+					{"Interest", txn.GetInterestAmount()},
+					{"Fees", txn.GetFeesAmount()},
+					{"Escrow", txn.GetEscrowAmount()},
 				}
-				if txn.GetInterestAmount() != "" && txn.GetInterestAmount() != "0" && txn.GetInterestAmount() != "0.00" {
-					text += fmt.Sprintf(" Interest: $%s", txn.GetInterestAmount())
-				}
-				if txn.GetFeesAmount() != "" && txn.GetFeesAmount() != "0" && txn.GetFeesAmount() != "0.00" {
-					text += fmt.Sprintf(" Fees: $%s", txn.GetFeesAmount())
-				}
-				if txn.GetEscrowAmount() != "" && txn.GetEscrowAmount() != "0" && txn.GetEscrowAmount() != "0.00" {
-					text += fmt.Sprintf(" Escrow: $%s", txn.GetEscrowAmount())
+				
+				for _, part := range breakdownParts {
+					if part.amount != "" && part.amount != "0" && part.amount != "0.00" {
+						text += fmt.Sprintf(" %s: $%s", part.label, part.amount)
+					}
 				}
 				text += "\n"
 			}

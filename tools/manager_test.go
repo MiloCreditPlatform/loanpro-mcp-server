@@ -86,8 +86,21 @@ func (m MockTransaction) GetInterestAmount() string  { return m.interestAmount }
 func (m MockTransaction) GetFeesAmount() string      { return m.feesAmount }
 func (m MockTransaction) GetEscrowAmount() string    { return m.escrowAmount }
 func (m MockTransaction) HasPaymentBreakdown() bool {
-	return m.principalAmount != "" || m.interestAmount != "" ||
-		m.feesAmount != "" || m.escrowAmount != ""
+	// Check for non-empty and non-zero amounts
+	hasData := false
+	if m.principalAmount != "" && m.principalAmount != "0" && m.principalAmount != "0.00" {
+		hasData = true
+	}
+	if m.interestAmount != "" && m.interestAmount != "0" && m.interestAmount != "0.00" {
+		hasData = true
+	}
+	if m.feesAmount != "" && m.feesAmount != "0" && m.feesAmount != "0.00" {
+		hasData = true
+	}
+	if m.escrowAmount != "" && m.escrowAmount != "0" && m.escrowAmount != "0.00" {
+		hasData = true
+	}
+	return hasData
 }
 
 // MockLoanProClient methods
