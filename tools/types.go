@@ -34,6 +34,7 @@ type LoanProClient interface {
 	GetCustomer(id string) (Customer, error)
 	SearchCustomers(searchTerm string, limit int) ([]Customer, error)
 	GetLoanPayments(loanID string) ([]Payment, error)
+	GetLoanTransactions(loanID string) ([]Transaction, error)
 }
 
 // Loan represents loan data - simplified interface for tools
@@ -62,6 +63,22 @@ type Payment interface {
 	GetAmount() string
 	GetDate() string
 	GetStatus() string
+}
+
+// Transaction represents transaction data - simplified interface for tools
+type Transaction interface {
+	GetID() string
+	GetAmount() string
+	GetDate() string
+	GetType() string
+	GetTitle() string
+	GetInfo() string
+	GetStatus() string
+	GetPrincipalAmount() string
+	GetInterestAmount() string
+	GetFeesAmount() string
+	GetEscrowAmount() string
+	HasPaymentBreakdown() bool
 }
 
 // Helper function to create error responses

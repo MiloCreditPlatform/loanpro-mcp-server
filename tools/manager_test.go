@@ -7,9 +7,10 @@ import (
 
 // MockLoanProClient implements the LoanProClient interface for testing
 type MockLoanProClient struct {
-	loans     map[string]MockLoan
-	customers map[string]MockCustomer
-	payments  map[string][]MockPayment
+	loans        map[string]MockLoan
+	customers    map[string]MockCustomer
+	payments     map[string][]MockPayment
+	transactions map[string][]MockTransaction
 }
 
 // MockLoan implements the Loan interface
@@ -57,6 +58,37 @@ func (m MockPayment) GetID() string     { return m.id }
 func (m MockPayment) GetAmount() string { return m.amount }
 func (m MockPayment) GetDate() string   { return m.date }
 func (m MockPayment) GetStatus() string { return m.status }
+
+// MockTransaction implements the Transaction interface
+type MockTransaction struct {
+	id              string
+	amount          string
+	date            string
+	txnType         string
+	title           string
+	info            string
+	status          string
+	principalAmount string
+	interestAmount  string
+	feesAmount      string
+	escrowAmount    string
+}
+
+func (m MockTransaction) GetID() string              { return m.id }
+func (m MockTransaction) GetAmount() string          { return m.amount }
+func (m MockTransaction) GetDate() string            { return m.date }
+func (m MockTransaction) GetType() string            { return m.txnType }
+func (m MockTransaction) GetTitle() string           { return m.title }
+func (m MockTransaction) GetInfo() string            { return m.info }
+func (m MockTransaction) GetStatus() string          { return m.status }
+func (m MockTransaction) GetPrincipalAmount() string { return m.principalAmount }
+func (m MockTransaction) GetInterestAmount() string  { return m.interestAmount }
+func (m MockTransaction) GetFeesAmount() string      { return m.feesAmount }
+func (m MockTransaction) GetEscrowAmount() string    { return m.escrowAmount }
+func (m MockTransaction) HasPaymentBreakdown() bool {
+	return m.principalAmount != "" || m.interestAmount != "" ||
+		m.feesAmount != "" || m.escrowAmount != ""
+}
 
 // MockLoanProClient methods
 func (m *MockLoanProClient) GetLoan(id string) (Loan, error) {
@@ -116,6 +148,17 @@ func (m *MockLoanProClient) GetLoanPayments(loanID string) ([]Payment, error) {
 	return []Payment{}, nil
 }
 
+func (m *MockLoanProClient) GetLoanTransactions(loanID string) ([]Transaction, error) {
+	if transactions, exists := m.transactions[loanID]; exists {
+		var result []Transaction
+		for _, transaction := range transactions {
+			result = append(result, transaction)
+		}
+		return result, nil
+	}
+	return []Transaction{}, nil
+}
+
 // Helper function to create a mock client with test data
 func createMockClient() *MockLoanProClient {
 	return &MockLoanProClient{
@@ -152,6 +195,28 @@ func createMockClient() *MockLoanProClient {
 				{id: "p2", amount: "500.00", date: "2025-02-15", status: "Active"},
 			},
 		},
+		transactions: map[string][]MockTransaction{
+			"123": {
+				{
+					id:              "t1",
+					amount:          "500.00",
+					date:            "2025-01-15",
+					txnType:         "payment",
+					title:           "Payment Received",
+					status:          "Active",
+					principalAmount: "450.00",
+					interestAmount:  "50.00",
+				},
+				{
+					id:      "t2",
+					amount:  "25.00",
+					date:    "2025-01-10",
+					txnType: "charge.latefee",
+					title:   "Late Fee",
+					status:  "Active",
+				},
+			},
+		},
 	}
 }
 
@@ -161,7 +226,7 @@ func TestManager_GetAllTools(t *testing.T) {
 
 	tools := manager.GetAllTools()
 
-	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments"}
+	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments", "get_loan_transactions"}
 
 	if len(tools) != len(expectedTools) {
 		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
@@ -427,5 +492,124 @@ func TestManager_ExecuteTool_GetLoanPayments_NoPayments(t *testing.T) {
 	// Verify that the response indicates no payments found
 	if !strings.Contains(text, "No payments found") {
 		t.Errorf("Expected response to contain 'No payments found', got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_GetLoanTransactions(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	arguments := map[string]any{
+		"loan_id": "123",
+	}
+
+	response := manager.ExecuteTool("get_loan_transactions", arguments)
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
+
+	if response.Result == nil {
+		t.Fatal("Expected result, got nil")
+	}
+
+	// Check result structure
+	result, ok := response.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be map[string]any")
+	}
+
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		t.Fatal("Expected content to be []map[string]any")
+	}
+
+	if len(content) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(content))
+	}
+
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatal("Expected text to be string")
+	}
+
+	// Verify that the response contains transaction details
+	if !strings.Contains(text, "Type: payment") {
+		t.Errorf("Expected response to contain 'Type: payment', got: %s", text)
+	}
+
+	if !strings.Contains(text, "Status: Active") {
+		t.Errorf("Expected response to contain 'Status: Active', got: %s", text)
+	}
+
+	if !strings.Contains(text, "ID: t1") {
+		t.Errorf("Expected response to contain 'ID: t1', got: %s", text)
+	}
+
+	// Verify payment breakdown is shown
+	if !strings.Contains(text, "Principal: $450.00") {
+		t.Errorf("Expected response to contain 'Principal: $450.00', got: %s", text)
+	}
+
+	if !strings.Contains(text, "Interest: $50.00") {
+		t.Errorf("Expected response to contain 'Interest: $50.00', got: %s", text)
+	}
+
+	// Verify charge transaction is shown
+	if !strings.Contains(text, "Type: charge.latefee") {
+		t.Errorf("Expected response to contain 'Type: charge.latefee', got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_GetLoanTransactions_NoTransactions(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	// Request transactions for a loan with no transaction history
+	arguments := map[string]any{
+		"loan_id": "456",
+	}
+
+	response := manager.ExecuteTool("get_loan_transactions", arguments)
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
+
+	if response.Result == nil {
+		t.Fatal("Expected result, got nil")
+	}
+
+	// Check result structure
+	result, ok := response.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be map[string]any")
+	}
+
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		t.Fatal("Expected content to be []map[string]any")
+	}
+
+	if len(content) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(content))
+	}
+
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatal("Expected text to be string")
+	}
+
+	// Verify that the response indicates no transactions found
+	if !strings.Contains(text, "No transactions found") {
+		t.Errorf("Expected response to contain 'No transactions found', got: %s", text)
 	}
 }

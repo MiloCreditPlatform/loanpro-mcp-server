@@ -113,6 +113,32 @@ type PaymentsWrapper struct {
 	Results []Payment `json:"results"`
 }
 
+// Transaction represents transaction data
+type Transaction struct {
+	ID              json.Number `json:"id"`
+	LoanID          json.Number `json:"loanId"`
+	Date            string      `json:"date"`
+	Amount          string      `json:"amount"`
+	Type            string      `json:"type"`
+	Title           string      `json:"title"`
+	Info            string      `json:"info"`
+	Active          json.Number `json:"active"`
+	Reversed        json.Number `json:"reversed"`
+	PaymentID       json.Number `json:"paymentId,omitempty"`
+	ChargeID        json.Number `json:"chargeId,omitempty"`
+	CreditID        json.Number `json:"creditId,omitempty"`
+	// Payment application breakdown
+	PrincipalAmount string `json:"principalAmount,omitempty"`
+	InterestAmount  string `json:"interestAmount,omitempty"`
+	FeesAmount      string `json:"feesAmount,omitempty"`
+	EscrowAmount    string `json:"escrowAmount,omitempty"`
+}
+
+// TransactionsWrapper wraps transaction results
+type TransactionsWrapper struct {
+	Results []Transaction `json:"results"`
+}
+
 // Response wrapper types
 type ODataResponse struct {
 	D any `json:"d"`
