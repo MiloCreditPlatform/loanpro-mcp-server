@@ -12,7 +12,7 @@ func (c *Client) GetLoan(loanID string) (*Loan, error) {
 	params := map[string]string{
 		"$expand": "LoanSettings,LoanSetup,Customers,StatusArchive",
 	}
-	
+
 	body, err := c.makeRequest("/public/api/1/odata.svc/Loans("+loanID+")", params)
 	if err != nil {
 		return nil, err
@@ -45,18 +45,18 @@ func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, erro
 	searchBody := map[string]any{
 		"size": limit, // Use 'size' for pagination limit
 	}
-	
+
 	// Build query conditions
 	var mustConditions []map[string]any
 	var shouldConditions []map[string]any
-	
+
 	// Add search term conditions if provided
 	if searchTerm != "" {
-		shouldConditions = append(shouldConditions, 
+		shouldConditions = append(shouldConditions,
 			map[string]any{
 				"query_string": map[string]any{
-					"query":   "*" + searchTerm + "*",
-					"fields":  []string{"displayId", "primaryCustomerName", "title"},
+					"query":            "*" + searchTerm + "*",
+					"fields":           []string{"displayId", "primaryCustomerName", "title"},
 					"default_operator": "and",
 				},
 			},
@@ -72,7 +72,7 @@ func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, erro
 			},
 		)
 	}
-	
+
 	// Add status filter if provided
 	if status != "" {
 		mustConditions = append(mustConditions, map[string]any{
@@ -81,11 +81,11 @@ func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, erro
 			},
 		})
 	}
-	
+
 	// Build the final query
 	if len(mustConditions) > 0 || len(shouldConditions) > 0 {
 		boolQuery := map[string]any{}
-		
+
 		if len(mustConditions) > 0 {
 			if len(mustConditions) == 1 {
 				boolQuery["must"] = mustConditions[0]
@@ -93,12 +93,12 @@ func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, erro
 				boolQuery["must"] = mustConditions
 			}
 		}
-		
+
 		if len(shouldConditions) > 0 {
 			boolQuery["should"] = shouldConditions
 			boolQuery["minimum_should_match"] = 1
 		}
-		
+
 		searchBody["query"] = map[string]any{
 			"bool": boolQuery,
 		}

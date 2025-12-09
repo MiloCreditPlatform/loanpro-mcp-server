@@ -19,3 +19,13 @@ func (p *Payment) GetDate() string {
 	}
 	return p.Date
 }
+
+// GetStatus returns the payment status as a human-readable string
+func (p *Payment) GetStatus() string {
+	// Active field: 1 = Active, 0 = Inactive (Reversed/Voided)
+	active := string(p.Active)
+	if active == "1" {
+		return "Active"
+	}
+	return "Inactive"
+}

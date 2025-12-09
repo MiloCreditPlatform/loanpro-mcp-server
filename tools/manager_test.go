@@ -13,20 +13,20 @@ type MockLoanProClient struct {
 
 // MockLoan implements the Loan interface
 type MockLoan struct {
-	id                   string
-	displayID            string
-	primaryCustomerName  string
-	loanStatus           string
-	principalBalance     string
-	payoffAmount         string
+	id                  string
+	displayID           string
+	primaryCustomerName string
+	loanStatus          string
+	principalBalance    string
+	payoffAmount        string
 }
 
-func (m MockLoan) GetID() string                    { return m.id }
-func (m MockLoan) GetDisplayID() string             { return m.displayID }
-func (m MockLoan) GetPrimaryCustomerName() string   { return m.primaryCustomerName }
-func (m MockLoan) GetLoanStatus() string            { return m.loanStatus }
-func (m MockLoan) GetPrincipalBalance() string      { return m.principalBalance }
-func (m MockLoan) GetPayoffAmount() string          { return m.payoffAmount }
+func (m MockLoan) GetID() string                  { return m.id }
+func (m MockLoan) GetDisplayID() string           { return m.displayID }
+func (m MockLoan) GetPrimaryCustomerName() string { return m.primaryCustomerName }
+func (m MockLoan) GetLoanStatus() string          { return m.loanStatus }
+func (m MockLoan) GetPrincipalBalance() string    { return m.principalBalance }
+func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -37,11 +37,11 @@ type MockCustomer struct {
 	phone     string
 }
 
-func (m MockCustomer) GetID() int            { return m.id }
-func (m MockCustomer) GetFirstName() string  { return m.firstName }
-func (m MockCustomer) GetLastName() string   { return m.lastName }
-func (m MockCustomer) GetEmail() string      { return m.email }
-func (m MockCustomer) GetPhone() string      { return m.phone }
+func (m MockCustomer) GetID() int             { return m.id }
+func (m MockCustomer) GetFirstName() string   { return m.firstName }
+func (m MockCustomer) GetLastName() string    { return m.lastName }
+func (m MockCustomer) GetEmail() string       { return m.email }
+func (m MockCustomer) GetPhone() string       { return m.phone }
 func (m MockCustomer) GetCreatedDate() string { return "2025-01-01 00:00:00 UTC" }
 
 // MockPayment implements the Payment interface
@@ -49,11 +49,13 @@ type MockPayment struct {
 	id     string
 	amount string
 	date   string
+	status string
 }
 
 func (m MockPayment) GetID() string     { return m.id }
 func (m MockPayment) GetAmount() string { return m.amount }
 func (m MockPayment) GetDate() string   { return m.date }
+func (m MockPayment) GetStatus() string { return m.status }
 
 // MockLoanProClient methods
 func (m *MockLoanProClient) GetLoan(id string) (Loan, error) {
@@ -127,7 +129,7 @@ func createMockClient() *MockLoanProClient {
 			},
 			"456": {
 				id:                  "456",
-				displayID:           "LN00000456", 
+				displayID:           "LN00000456",
 				primaryCustomerName: "Jane Smith",
 				loanStatus:          "Current",
 				principalBalance:    "18500.00",
@@ -145,8 +147,8 @@ func createMockClient() *MockLoanProClient {
 		},
 		payments: map[string][]MockPayment{
 			"123": {
-				{id: "p1", amount: "500.00", date: "2025-01-15"},
-				{id: "p2", amount: "500.00", date: "2025-02-15"},
+				{id: "p1", amount: "500.00", date: "2025-01-15", status: "Active"},
+				{id: "p2", amount: "500.00", date: "2025-02-15", status: "Active"},
 			},
 		},
 	}
@@ -155,20 +157,20 @@ func createMockClient() *MockLoanProClient {
 func TestManager_GetAllTools(t *testing.T) {
 	mockClient := createMockClient()
 	manager := NewManager(mockClient)
-	
+
 	tools := manager.GetAllTools()
-	
+
 	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments"}
-	
+
 	if len(tools) != len(expectedTools) {
 		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
 	}
-	
+
 	toolNames := make(map[string]bool)
 	for _, tool := range tools {
 		toolNames[tool.Name] = true
 	}
-	
+
 	for _, expectedTool := range expectedTools {
 		if !toolNames[expectedTool] {
 			t.Errorf("Expected tool %s not found", expectedTool)
@@ -179,21 +181,21 @@ func TestManager_GetAllTools(t *testing.T) {
 func TestManager_ExecuteTool_GetLoan(t *testing.T) {
 	mockClient := createMockClient()
 	manager := NewManager(mockClient)
-	
+
 	arguments := map[string]any{
 		"loan_id": "123",
 	}
-	
+
 	response := manager.ExecuteTool("get_loan", arguments)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.Error != nil {
 		t.Errorf("Expected no error, got %v", response.Error)
 	}
-	
+
 	if response.Result == nil {
 		t.Error("Expected result, got nil")
 	}
@@ -202,18 +204,18 @@ func TestManager_ExecuteTool_GetLoan(t *testing.T) {
 func TestManager_ExecuteTool_SearchLoans(t *testing.T) {
 	mockClient := createMockClient()
 	manager := NewManager(mockClient)
-	
+
 	arguments := map[string]any{
 		"search_term": "John",
 		"limit":       float64(10),
 	}
-	
+
 	response := manager.ExecuteTool("search_loans", arguments)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.Error != nil {
 		t.Errorf("Expected no error, got %v", response.Error)
 	}
@@ -222,17 +224,17 @@ func TestManager_ExecuteTool_SearchLoans(t *testing.T) {
 func TestManager_ExecuteTool_GetCustomer(t *testing.T) {
 	mockClient := createMockClient()
 	manager := NewManager(mockClient)
-	
+
 	arguments := map[string]any{
 		"customer_id": "789",
 	}
-	
+
 	response := manager.ExecuteTool("get_customer", arguments)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.Error != nil {
 		t.Errorf("Expected no error, got %v", response.Error)
 	}
@@ -241,19 +243,19 @@ func TestManager_ExecuteTool_GetCustomer(t *testing.T) {
 func TestManager_ExecuteTool_InvalidTool(t *testing.T) {
 	mockClient := createMockClient()
 	manager := NewManager(mockClient)
-	
+
 	arguments := map[string]any{}
-	
+
 	response := manager.ExecuteTool("invalid_tool", arguments)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.Error == nil {
 		t.Error("Expected error for invalid tool, got nil")
 	}
-	
+
 	if response.Error.Code != -32601 {
 		t.Errorf("Expected error code -32601, got %d", response.Error.Code)
 	}
@@ -262,36 +264,36 @@ func TestManager_ExecuteTool_InvalidTool(t *testing.T) {
 func TestCreateSuccessResponse(t *testing.T) {
 	text := "Test response"
 	id := 123
-	
+
 	response := CreateSuccessResponse(text, id)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.ID != id {
 		t.Errorf("Expected ID %v, got %v", id, response.ID)
 	}
-	
+
 	if response.Error != nil {
 		t.Errorf("Expected no error, got %v", response.Error)
 	}
-	
+
 	// Check result structure
 	result, ok := response.Result.(map[string]any)
 	if !ok {
 		t.Error("Expected result to be map[string]any")
 	}
-	
+
 	content, ok := result["content"].([]map[string]any)
 	if !ok {
 		t.Error("Expected content to be []map[string]any")
 	}
-	
+
 	if len(content) != 1 {
 		t.Errorf("Expected 1 content item, got %d", len(content))
 	}
-	
+
 	if content[0]["text"] != text {
 		t.Errorf("Expected text %s, got %s", text, content[0]["text"])
 	}
@@ -301,26 +303,142 @@ func TestCreateErrorResponse(t *testing.T) {
 	code := -1
 	message := "Test error"
 	id := 123
-	
+
 	response := CreateErrorResponse(code, message, id)
-	
+
 	if response.JSONRPC != "2.0" {
 		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
 	}
-	
+
 	if response.ID != id {
 		t.Errorf("Expected ID %v, got %v", id, response.ID)
 	}
-	
+
 	if response.Error == nil {
 		t.Error("Expected error, got nil")
 	}
-	
+
 	if response.Error.Code != code {
 		t.Errorf("Expected error code %d, got %d", code, response.Error.Code)
 	}
-	
+
 	if response.Error.Message != message {
 		t.Errorf("Expected error message %s, got %s", message, response.Error.Message)
 	}
+}
+
+func TestManager_ExecuteTool_GetLoanPayments(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	arguments := map[string]any{
+		"loan_id": "123",
+	}
+
+	response := manager.ExecuteTool("get_loan_payments", arguments)
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
+
+	if response.Result == nil {
+		t.Fatal("Expected result, got nil")
+	}
+
+	// Check result structure
+	result, ok := response.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be map[string]any")
+	}
+
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		t.Fatal("Expected content to be []map[string]any")
+	}
+
+	if len(content) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(content))
+	}
+
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatal("Expected text to be string")
+	}
+
+	// Verify that the response contains payment status
+	if !contains(text, "Status: Active") {
+		t.Errorf("Expected response to contain 'Status: Active', got: %s", text)
+	}
+
+	// Verify that both payments are listed
+	if !contains(text, "ID: p1") || !contains(text, "ID: p2") {
+		t.Errorf("Expected response to contain payment IDs p1 and p2, got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_GetLoanPayments_NoPayments(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	// Request payments for a loan with no payment history
+	arguments := map[string]any{
+		"loan_id": "456",
+	}
+
+	response := manager.ExecuteTool("get_loan_payments", arguments)
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
+
+	if response.Result == nil {
+		t.Fatal("Expected result, got nil")
+	}
+
+	// Check result structure
+	result, ok := response.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be map[string]any")
+	}
+
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		t.Fatal("Expected content to be []map[string]any")
+	}
+
+	if len(content) != 1 {
+		t.Fatalf("Expected 1 content item, got %d", len(content))
+	}
+
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatal("Expected text to be string")
+	}
+
+	// Verify that the response indicates no payments found
+	if !contains(text, "No payments found") {
+		t.Errorf("Expected response to contain 'No payments found', got: %s", text)
+	}
+}
+
+// Helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
+}
+
+func containsMiddle(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

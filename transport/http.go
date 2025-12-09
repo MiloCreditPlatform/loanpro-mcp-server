@@ -91,7 +91,7 @@ func (t *HTTPTransport) HandleMCP(w http.ResponseWriter, r *http.Request) {
 func (t *HTTPTransport) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	
+
 	json.NewEncoder(w).Encode(map[string]string{
 		"name":      "LoanPro MCP Server",
 		"version":   "1.0.0",
@@ -103,9 +103,9 @@ func (t *HTTPTransport) HandleRoot(w http.ResponseWriter, r *http.Request) {
 func (t *HTTPTransport) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	
+
 	json.NewEncoder(w).Encode(map[string]string{
-		"status": "healthy",
+		"status":    "healthy",
 		"transport": "http",
 	})
 }
@@ -113,7 +113,7 @@ func (t *HTTPTransport) HandleHealth(w http.ResponseWriter, r *http.Request) {
 // sendError sends an error response
 func (t *HTTPTransport) sendError(w http.ResponseWriter, code int, message string, id any) {
 	slog.Error("Sending HTTP error response", "code", code, "message", message, "id", id)
-	
+
 	errorResponse := MCPResponse{
 		JSONRPC: "2.0",
 		Error: &MCPError{

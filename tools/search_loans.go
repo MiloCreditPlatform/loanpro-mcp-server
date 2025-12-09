@@ -51,7 +51,7 @@ func (m *Manager) executeSearchLoans(arguments map[string]any) MCPResponse {
 
 	text := "Loans:\n"
 	for _, loan := range loans {
-		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s\n", 
+		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s\n",
 			loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetLoanStatus(), loan.GetPrincipalBalance())
 	}
 
