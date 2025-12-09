@@ -42,7 +42,7 @@ func (t *Transaction) GetStatus() string {
 	if reversed == "1" {
 		return "Reversed"
 	}
-	
+
 	// Check active field: 1 = Active, 0 = Inactive (Voided)
 	active := string(t.Active)
 	if active == "1" {

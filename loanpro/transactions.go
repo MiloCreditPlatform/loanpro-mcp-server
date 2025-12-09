@@ -10,7 +10,7 @@ import (
 func (c *Client) GetLoanTransactions(loanID string) ([]Transaction, error) {
 	// Use the Transactions endpoint directly
 	endpoint := fmt.Sprintf("/public/api/1/Loans(%s)/Transactions", loanID)
-	
+
 	body, err := c.makeRequest(endpoint, nil)
 	if err != nil {
 		return nil, err
