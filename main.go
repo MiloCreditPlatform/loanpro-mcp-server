@@ -136,6 +136,19 @@ func (ca *ClientAdapter) GetLoanPayments(loanID string) ([]tools.Payment, error)
 	return result, nil
 }
 
+func (ca *ClientAdapter) GetLoanTransactions(loanID string) ([]tools.Transaction, error) {
+	transactions, err := ca.client.GetLoanTransactions(loanID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]tools.Transaction, len(transactions))
+	for i, transaction := range transactions {
+		result[i] = &transaction
+	}
+	return result, nil
+}
+
 // HandleMCPRequest handles MCP protocol requests
 func (s *MCPServer) HandleMCPRequest(req transport.MCPRequest) transport.MCPResponse {
 	switch req.Method {
