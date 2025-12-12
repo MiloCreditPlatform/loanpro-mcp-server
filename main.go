@@ -137,7 +137,20 @@ func (ca *ClientAdapter) GetLoanPayments(loanID string) ([]tools.Payment, error)
 }
 
 func (ca *ClientAdapter) GetLoanTransactions(loanID string) ([]tools.Transaction, error) {
-	transactions, err := ca.client.GetLoanTransactions(loanID)
+	return ca.GetLoanTransactionsWithOptions(loanID, nil)
+}
+
+func (ca *ClientAdapter) GetLoanTransactionsWithOptions(loanID string, opts *tools.TransactionOptions) ([]tools.Transaction, error) {
+	// Convert tools.TransactionOptions to loanpro.TransactionOptions
+	var loanProOpts *loanpro.TransactionOptions
+	if opts != nil {
+		loanProOpts = &loanpro.TransactionOptions{
+			Limit:  opts.Limit,
+			Offset: opts.Offset,
+		}
+	}
+
+	transactions, err := ca.client.GetLoanTransactionsWithOptions(loanID, loanProOpts)
 	if err != nil {
 		return nil, err
 	}

@@ -160,6 +160,11 @@ type Transaction struct {
 // TransactionsWrapper wraps transaction results
 type TransactionsWrapper struct {
 	Results []Transaction `json:"results"`
+	Summary struct {
+		Start    json.Number `json:"start"`
+		PageSize json.Number `json:"pageSize"`
+		Total    json.Number `json:"total"`
+	} `json:"summary"`
 }
 
 // Response wrapper types

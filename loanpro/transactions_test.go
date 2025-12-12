@@ -563,3 +563,59 @@ func TestTransactionZeroAmounts(t *testing.T) {
 		t.Error("Expected HasChargeBreakdown to be false for zero amounts")
 	}
 }
+
+func TestTransactionOptions(t *testing.T) {
+	tests := []struct {
+		name       string
+		opts       *TransactionOptions
+		wantLimit  int
+		wantOffset int
+	}{
+		{
+			name: "With limit and offset",
+			opts: &TransactionOptions{
+				Limit:  10,
+				Offset: 5,
+			},
+			wantLimit:  10,
+			wantOffset: 5,
+		},
+		{
+			name: "Only limit",
+			opts: &TransactionOptions{
+				Limit:  25,
+				Offset: 0,
+			},
+			wantLimit:  25,
+			wantOffset: 0,
+		},
+		{
+			name: "Only offset",
+			opts: &TransactionOptions{
+				Limit:  0,
+				Offset: 10,
+			},
+			wantLimit:  0,
+			wantOffset: 10,
+		},
+		{
+			name:       "Nil options",
+			opts:       nil,
+			wantLimit:  0,
+			wantOffset: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.opts != nil {
+				if tt.opts.Limit != tt.wantLimit {
+					t.Errorf("Expected Limit %d, got %d", tt.wantLimit, tt.opts.Limit)
+				}
+				if tt.opts.Offset != tt.wantOffset {
+					t.Errorf("Expected Offset %d, got %d", tt.wantOffset, tt.opts.Offset)
+				}
+			}
+		})
+	}
+}

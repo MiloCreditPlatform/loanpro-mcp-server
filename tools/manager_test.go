@@ -162,11 +162,31 @@ func (m *MockLoanProClient) GetLoanPayments(loanID string) ([]Payment, error) {
 }
 
 func (m *MockLoanProClient) GetLoanTransactions(loanID string) ([]Transaction, error) {
+	return m.GetLoanTransactionsWithOptions(loanID, nil)
+}
+
+func (m *MockLoanProClient) GetLoanTransactionsWithOptions(loanID string, opts *TransactionOptions) ([]Transaction, error) {
 	if transactions, exists := m.transactions[loanID]; exists {
 		var result []Transaction
 		for _, transaction := range transactions {
 			result = append(result, transaction)
 		}
+
+		// Apply pagination if options provided
+		if opts != nil {
+			start := opts.Offset
+			if start > len(result) {
+				return []Transaction{}, nil
+			}
+
+			end := len(result)
+			if opts.Limit > 0 && start+opts.Limit < end {
+				end = start + opts.Limit
+			}
+
+			return result[start:end], nil
+		}
+
 		return result, nil
 	}
 	return []Transaction{}, nil
@@ -625,4 +645,107 @@ func TestManager_ExecuteTool_GetLoanTransactions_NoTransactions(t *testing.T) {
 	if !strings.Contains(text, "No transactions found") {
 		t.Errorf("Expected response to contain 'No transactions found', got: %s", text)
 	}
+}
+
+func TestManager_ExecuteTool_GetLoanTransactions_WithPagination(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	// Test with limit parameter only
+	t.Run("With limit only", func(t *testing.T) {
+		arguments := map[string]any{
+			"loan_id": "123",
+			"limit":   float64(1),
+		}
+
+		response := manager.ExecuteTool("get_loan_transactions", arguments)
+
+		if response.Error != nil {
+			t.Errorf("Expected no error, got %v", response.Error)
+		}
+
+		result, ok := response.Result.(map[string]any)
+		if !ok {
+			t.Fatal("Expected result to be map")
+		}
+
+		content, ok := result["content"].([]map[string]any)
+		if !ok {
+			t.Fatal("Expected content to be []map[string]any")
+		}
+
+		text := content[0]["text"].(string)
+
+		// Should only return 1 transaction
+		transactionCount := strings.Count(text, "ID: t")
+		if transactionCount != 1 {
+			t.Errorf("Expected 1 transaction with limit=1, got %d", transactionCount)
+		}
+	})
+
+	// Test with limit and offset
+	t.Run("With limit and offset", func(t *testing.T) {
+		arguments := map[string]any{
+			"loan_id": "123",
+			"limit":   float64(1),
+			"offset":  float64(1),
+		}
+
+		response := manager.ExecuteTool("get_loan_transactions", arguments)
+
+		if response.Error != nil {
+			t.Errorf("Expected no error, got %v", response.Error)
+		}
+
+		result, ok := response.Result.(map[string]any)
+		if !ok {
+			t.Fatal("Expected result to be map")
+		}
+
+		content, ok := result["content"].([]map[string]any)
+		if !ok {
+			t.Fatal("Expected content to be []map[string]any")
+		}
+
+		text := content[0]["text"].(string)
+
+		// Should skip first transaction and return the second one
+		if strings.Contains(text, "ID: t1") {
+			t.Error("Expected to skip first transaction (t1)")
+		}
+		if !strings.Contains(text, "ID: t2") {
+			t.Error("Expected to include second transaction (t2)")
+		}
+	})
+
+	// Test with offset beyond available records
+	t.Run("Offset beyond available", func(t *testing.T) {
+		arguments := map[string]any{
+			"loan_id": "123",
+			"offset":  float64(10),
+		}
+
+		response := manager.ExecuteTool("get_loan_transactions", arguments)
+
+		if response.Error != nil {
+			t.Errorf("Expected no error, got %v", response.Error)
+		}
+
+		result, ok := response.Result.(map[string]any)
+		if !ok {
+			t.Fatal("Expected result to be map")
+		}
+
+		content, ok := result["content"].([]map[string]any)
+		if !ok {
+			t.Fatal("Expected content to be []map[string]any")
+		}
+
+		text := content[0]["text"].(string)
+
+		// Should return no transactions message
+		if !strings.Contains(text, "No transactions found") {
+			t.Errorf("Expected 'No transactions found' when offset > available records, got: %s", text)
+		}
+	})
 }
