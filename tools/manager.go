@@ -20,6 +20,7 @@ func (m *Manager) GetAllTools() []Tool {
 		GetCustomerTool(),
 		SearchCustomersTool(),
 		GetLoanPaymentsTool(),
+		GetLoanTransactionsTool(),
 	}
 }
 
@@ -36,6 +37,8 @@ func (m *Manager) ExecuteTool(toolName string, arguments map[string]any) MCPResp
 		return m.executeSearchCustomers(arguments)
 	case "get_loan_payments":
 		return m.executeGetLoanPayments(arguments)
+	case "get_loan_transactions":
+		return m.executeGetLoanTransactions(arguments)
 	default:
 		return MCPResponse{
 			JSONRPC: "2.0",

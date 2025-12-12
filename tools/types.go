@@ -27,6 +27,12 @@ type MCPError struct {
 	Message string `json:"message"`
 }
 
+// TransactionOptions contains pagination and filtering options for transactions
+type TransactionOptions struct {
+	Limit  int // Maximum number of records to return
+	Offset int // Number of records to skip
+}
+
 // LoanProClient interface for dependency injection
 type LoanProClient interface {
 	GetLoan(id string) (Loan, error)
@@ -34,6 +40,8 @@ type LoanProClient interface {
 	GetCustomer(id string) (Customer, error)
 	SearchCustomers(searchTerm string, limit int) ([]Customer, error)
 	GetLoanPayments(loanID string) ([]Payment, error)
+	GetLoanTransactions(loanID string) ([]Transaction, error)
+	GetLoanTransactionsWithOptions(loanID string, opts *TransactionOptions) ([]Transaction, error)
 }
 
 // Loan represents loan data - simplified interface for tools
@@ -62,6 +70,22 @@ type Payment interface {
 	GetAmount() string
 	GetDate() string
 	GetStatus() string
+}
+
+// Transaction represents transaction data - simplified interface for tools
+type Transaction interface {
+	GetID() string
+	GetAmount() string
+	GetDate() string
+	GetType() string
+	GetTitle() string
+	GetInfo() string
+	GetStatus() string
+	GetPrincipalAmount() string
+	GetInterestAmount() string
+	GetFeesAmount() string
+	GetEscrowAmount() string
+	HasPaymentBreakdown() bool
 }
 
 // Helper function to create error responses

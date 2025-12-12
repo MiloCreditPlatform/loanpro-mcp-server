@@ -134,6 +134,19 @@ Get payment history for a loan.
 
 **Returns:** Chronological list of payments made on the loan with dates, amounts, payment IDs, and status (Active/Inactive).
 
+### get_loan_transactions
+Get detailed transaction history for a loan including payments, charges, credits, and adjustments.
+
+**Parameters:**
+- `loan_id` (required): The loan ID to get transaction history for
+
+**Returns:** Comprehensive transaction history including:
+- Transaction type (payment, charge, credit, adjustment, etc.)
+- Transaction amount, date, ID, and status
+- Payment application breakdown (principal, interest, fees, escrow)
+- Transaction title and description
+- Complete audit trail of all loan activities
+
 ## Usage Examples
 
 ### HTTP Transport
@@ -153,6 +166,11 @@ curl -X POST http://localhost:8080/mcp \
 curl -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_loan","arguments":{"loan_id":"123"}},"id":2}'
+
+# Get loan transactions
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_loan_transactions","arguments":{"loan_id":"123"}},"id":3}'
 ```
 
 ### MCP Client Configuration (Claude Desktop)
@@ -317,6 +335,21 @@ Name: John Doe
 Email: john.doe@example.com
 Phone: (555) 123-4567
 Created: 2024-01-15 10:30:22 UTC
+```
+
+### Transaction History
+```
+Transaction History for Loan 619:
+- Date: 2025-11-25, Type: payment, Amount: $75022.40, ID: 2356, Status: Active
+  Title: Payment Received
+  Applied: Principal: $74500.00 Interest: $522.40
+- Date: 2025-11-25, Type: payment, Amount: $500.00, ID: 2357, Status: Active
+  Title: Additional Payment
+  Applied: Principal: $500.00
+- Date: 2025-11-20, Type: charge.latefee, Amount: $50.00, ID: 1234, Status: Active
+  Title: Late Fee
+- Date: 2025-11-18, Type: credit, Amount: $25.00, ID: 1233, Status: Active
+  Title: Fee Waiver
 ```
 
 ## Logging Configuration
