@@ -113,25 +113,48 @@ type PaymentsWrapper struct {
 	Results []Payment `json:"results"`
 }
 
-// Transaction represents transaction data
+// Transaction represents transaction data from the LoanTransactions endpoint
 type Transaction struct {
-	ID        json.Number `json:"id"`
-	LoanID    json.Number `json:"loanId"`
-	Date      string      `json:"date"`
-	Amount    string      `json:"amount"`
-	Type      string      `json:"type"`
-	Title     string      `json:"title"`
-	Info      string      `json:"info"`
-	Active    json.Number `json:"active"`
-	Reversed  json.Number `json:"reversed"`
-	PaymentID json.Number `json:"paymentId,omitempty"`
-	ChargeID  json.Number `json:"chargeId,omitempty"`
-	CreditID  json.Number `json:"creditId,omitempty"`
-	// Payment application breakdown
-	PrincipalAmount string `json:"principalAmount,omitempty"`
-	InterestAmount  string `json:"interestAmount,omitempty"`
-	FeesAmount      string `json:"feesAmount,omitempty"`
-	EscrowAmount    string `json:"escrowAmount,omitempty"`
+	ID                     json.Number `json:"id"`
+	TxID                   string      `json:"txId"`
+	EntityType             string      `json:"entityType"`
+	EntityID               json.Number `json:"entityId"`
+	ModID                  json.Number `json:"modId"`
+	Date                   string      `json:"date"`
+	Period                 json.Number `json:"period"`
+	PeriodStart            string      `json:"periodStart"`
+	PeriodEnd              string      `json:"periodEnd"`
+	Title                  string      `json:"title"`
+	Type                   string      `json:"type"`
+	InfoOnly               json.Number `json:"infoOnly"`
+	InfoDetails            string      `json:"infoDetails"`
+	PaymentID              json.Number `json:"paymentId"`
+	PaymentDisplayID       json.Number `json:"paymentDisplayId"`
+	PaymentAmount          string      `json:"paymentAmount"`
+	PaymentInterest        string      `json:"paymentInterest"`
+	PaymentPrincipal       string      `json:"paymentPrincipal"`
+	PaymentDiscount        string      `json:"paymentDiscount"`
+	PaymentFees            string      `json:"paymentFees"`
+	FeesPaidDetails        string      `json:"feesPaidDetails"`
+	PaymentEscrow          string      `json:"paymentEscrow"`
+	PaymentEscrowBreakdown string      `json:"paymentEscrowBreakdown"`
+	ChargeAmount           string      `json:"chargeAmount"`
+	ChargeInterest         string      `json:"chargeInterest"`
+	ChargePrincipal        string      `json:"chargePrincipal"`
+	ChargeDiscount         string      `json:"chargeDiscount"`
+	ChargeFees             string      `json:"chargeFees"`
+	ChargeEscrow           string      `json:"chargeEscrow"`
+	ChargeEscrowBreakdown  string      `json:"chargeEscrowBreakdown"`
+	Future                 json.Number `json:"future"`
+	PrincipalOnly          json.Number `json:"principalOnly"`
+	Advancement            json.Number `json:"advancement"`
+	PayoffFee              json.Number `json:"payoffFee"`
+	ChargeOff              json.Number `json:"chargeOff"`
+	PaymentType            json.Number `json:"paymentType"`
+	AdbDays                json.Number `json:"adbDays"`
+	Adb                    string      `json:"adb"`
+	PrincipalBalance       string      `json:"principalBalance"`
+	DisplayOrder           string      `json:"displayOrder"`
 }
 
 // TransactionsWrapper wraps transaction results

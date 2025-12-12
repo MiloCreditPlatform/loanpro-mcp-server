@@ -6,14 +6,17 @@ build:
 
 # Run tests
 test:
+	go clean -testcache
 	go test ./... -race
 
 # Run tests with verbose output
 test-verbose:
+	go clean -testcache
 	go test ./... -v -race
 
 # Run tests with coverage
 test-coverage:
+	go clean -testcache
 	go test ./... -race -coverprofile=coverage.out -covermode=atomic
 	go tool cover -html=coverage.out -o coverage.html
 
