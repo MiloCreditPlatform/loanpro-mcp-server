@@ -23,6 +23,11 @@ func SearchLoansTool() Tool {
 					"description": "Maximum number of results",
 					"default":     10,
 				},
+				"offset": map[string]any{
+					"type":        "number",
+					"description": "Number of results to skip for pagination",
+					"default":     0,
+				},
 			},
 		},
 	}
@@ -42,8 +47,12 @@ func (m *Manager) executeSearchLoans(arguments map[string]any) MCPResponse {
 	if l, ok := arguments["limit"].(float64); ok {
 		limit = int(l)
 	}
+	offset := 0
+	if o, ok := arguments["offset"].(float64); ok {
+		offset = int(o)
+	}
 
-	loans, err := m.client.SearchLoans(searchTerm, status, limit)
+	loans, err := m.client.SearchLoans(searchTerm, status, limit, offset)
 	if err != nil {
 		LogError("search_loans", err, fmt.Sprintf("with term='%s', status='%s', limit=%d", searchTerm, status, limit))
 		return CreateErrorResponse(-1, err.Error(), nil)
@@ -51,8 +60,8 @@ func (m *Manager) executeSearchLoans(arguments map[string]any) MCPResponse {
 
 	text := "Loans:\n"
 	for _, loan := range loans {
-		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s\n",
-			loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetLoanStatus(), loan.GetPrincipalBalance())
+		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Status: %s, Balance: $%s, Days Past Due: %s\n",
+			loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetLoanStatus(), loan.GetPrincipalBalance(), loan.GetDaysPastDue())
 	}
 
 	return CreateSuccessResponse(text, nil)

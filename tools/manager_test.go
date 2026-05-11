@@ -29,6 +29,7 @@ func (m MockLoan) GetPrimaryCustomerName() string { return m.primaryCustomerName
 func (m MockLoan) GetLoanStatus() string          { return m.loanStatus }
 func (m MockLoan) GetPrincipalBalance() string    { return m.principalBalance }
 func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
+func (m MockLoan) GetDaysPastDue() string         { return "0" }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -111,7 +112,7 @@ func (m *MockLoanProClient) GetLoan(id string) (Loan, error) {
 	return nil, nil
 }
 
-func (m *MockLoanProClient) SearchLoans(searchTerm, status string, limit int) ([]Loan, error) {
+func (m *MockLoanProClient) SearchLoans(searchTerm, status string, limit, offset int) ([]Loan, error) {
 	var results []Loan
 	count := 0
 	for _, loan := range m.loans {
