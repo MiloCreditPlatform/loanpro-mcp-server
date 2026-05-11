@@ -36,7 +36,7 @@ type TransactionOptions struct {
 // LoanProClient interface for dependency injection
 type LoanProClient interface {
 	GetLoan(id string) (Loan, error)
-	SearchLoans(searchTerm, status string, limit int) ([]Loan, error)
+	SearchLoans(searchTerm, status string, limit, offset int) ([]Loan, error)
 	GetCustomer(id string) (Customer, error)
 	SearchCustomers(searchTerm string, limit int) ([]Customer, error)
 	GetLoanPayments(loanID string) ([]Payment, error)
@@ -52,6 +52,7 @@ type Loan interface {
 	GetLoanStatus() string
 	GetPrincipalBalance() string
 	GetPayoffAmount() string
+	GetDaysPastDue() string
 }
 
 // Customer represents customer data - simplified interface for tools

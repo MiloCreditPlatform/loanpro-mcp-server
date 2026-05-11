@@ -40,10 +40,11 @@ func (c *Client) GetLoan(loanID string) (*Loan, error) {
 }
 
 // SearchLoans searches for loans using the search API
-func (c *Client) SearchLoans(searchTerm, status string, limit int) ([]Loan, error) {
+func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Loan, error) {
 	// Build the search query according to LoanPro API format
 	searchBody := map[string]any{
-		"size": limit, // Use 'size' for pagination limit
+		"size": limit,
+		"from": offset,
 	}
 
 	// Build query conditions

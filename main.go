@@ -89,8 +89,8 @@ func (ca *ClientAdapter) GetLoan(id string) (tools.Loan, error) {
 	return loan, nil
 }
 
-func (ca *ClientAdapter) SearchLoans(searchTerm, status string, limit int) ([]tools.Loan, error) {
-	loans, err := ca.client.SearchLoans(searchTerm, status, limit)
+func (ca *ClientAdapter) SearchLoans(searchTerm, status string, limit, offset int) ([]tools.Loan, error) {
+	loans, err := ca.client.SearchLoans(searchTerm, status, limit, offset)
 	if err != nil {
 		return nil, err
 	}
