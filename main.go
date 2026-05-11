@@ -140,6 +140,19 @@ func (ca *ClientAdapter) GetLoanTransactions(loanID string) ([]tools.Transaction
 	return ca.GetLoanTransactionsWithOptions(loanID, nil)
 }
 
+func (ca *ClientAdapter) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]tools.Loan, error) {
+	loans, err := ca.client.GetPastDueLoans(minDaysPastDue, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]tools.Loan, len(loans))
+	for i, loan := range loans {
+		result[i] = &loan
+	}
+	return result, nil
+}
+
 func (ca *ClientAdapter) GetLoanTransactionsWithOptions(loanID string, opts *tools.TransactionOptions) ([]tools.Transaction, error) {
 	// Convert tools.TransactionOptions to loanpro.TransactionOptions
 	var loanProOpts *loanpro.TransactionOptions

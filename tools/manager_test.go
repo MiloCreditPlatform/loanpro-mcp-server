@@ -166,6 +166,19 @@ func (m *MockLoanProClient) GetLoanTransactions(loanID string) ([]Transaction, e
 	return m.GetLoanTransactionsWithOptions(loanID, nil)
 }
 
+func (m *MockLoanProClient) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
+	var results []Loan
+	count := 0
+	for _, loan := range m.loans {
+		if count >= limit {
+			break
+		}
+		results = append(results, loan)
+		count++
+	}
+	return results, nil
+}
+
 func (m *MockLoanProClient) GetLoanTransactionsWithOptions(loanID string, opts *TransactionOptions) ([]Transaction, error) {
 	if transactions, exists := m.transactions[loanID]; exists {
 		var result []Transaction
@@ -260,7 +273,7 @@ func TestManager_GetAllTools(t *testing.T) {
 
 	tools := manager.GetAllTools()
 
-	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments", "get_loan_transactions"}
+	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments", "get_loan_transactions", "get_past_due_loans"}
 
 	if len(tools) != len(expectedTools) {
 		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
@@ -749,4 +762,63 @@ func TestManager_ExecuteTool_GetLoanTransactions_WithPagination(t *testing.T) {
 			t.Errorf("Expected 'No transactions found' when offset > available records, got: %s", text)
 		}
 	})
+}
+
+func TestManager_ExecuteTool_GetPastDueLoans(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	arguments := map[string]any{
+		"min_days_past_due": float64(5),
+		"limit":             float64(10),
+	}
+
+	response := manager.ExecuteTool("get_past_due_loans", arguments)
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
+
+	if response.Result == nil {
+		t.Fatal("Expected result, got nil")
+	}
+
+	result, ok := response.Result.(map[string]any)
+	if !ok {
+		t.Fatal("Expected result to be map[string]any")
+	}
+
+	content, ok := result["content"].([]map[string]any)
+	if !ok {
+		t.Fatal("Expected content to be []map[string]any")
+	}
+
+	text, ok := content[0]["text"].(string)
+	if !ok {
+		t.Fatal("Expected text to be string")
+	}
+
+	if !strings.Contains(text, "Days Past Due") {
+		t.Errorf("Expected response to contain 'Days Past Due', got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_GetPastDueLoans_Defaults(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	// Call with no arguments to exercise defaults
+	response := manager.ExecuteTool("get_past_due_loans", map[string]any{})
+
+	if response.JSONRPC != "2.0" {
+		t.Errorf("Expected JSONRPC 2.0, got %s", response.JSONRPC)
+	}
+
+	if response.Error != nil {
+		t.Errorf("Expected no error, got %v", response.Error)
+	}
 }

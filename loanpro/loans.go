@@ -123,3 +123,26 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 
 	return response.D.Results, nil
 }
+
+// GetPastDueLoans retrieves loans past due by at least minDaysPastDue days using OData filtering
+func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
+	params := map[string]string{
+		"$filter": fmt.Sprintf("DaysPastDue gt %d and loanStatusText eq 'Open'", minDaysPastDue),
+		"$expand": "Customers",
+		"$top":    fmt.Sprintf("%d", limit),
+		"$skip":   fmt.Sprintf("%d", offset),
+	}
+
+	body, err := c.makeRequest("/public/api/1/odata.svc/Loans", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ODataLoansResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans response: %v\nResponse body: %s\n", err, string(body))
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return response.D.Results, nil
+}
