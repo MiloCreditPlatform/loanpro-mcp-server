@@ -215,6 +215,9 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 	}
 
 	loans := odataResp.D.Results
+	if len(loans) == 0 {
+		return nil, fmt.Errorf("failed to fetch loan details: Elasticsearch returned %d matches but OData returned no results", len(searchResp.D.Results))
+	}
 
 	// OData doesn't preserve Elasticsearch sort order; re-sort by daysPastDue ascending.
 	sort.Slice(loans, func(i, j int) bool {
