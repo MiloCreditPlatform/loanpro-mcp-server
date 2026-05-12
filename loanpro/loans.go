@@ -3,6 +3,7 @@ package loanpro
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -126,10 +127,10 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 
 const maxPastDueLimit = 200
 
-// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due
-// using the Elasticsearch search endpoint with a range query, which supports daysPastDue
-// filtering. The OData endpoint cannot filter on daysPastDue as it is not a direct
-// Loan entity property.
+// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due.
+// Elasticsearch is used to filter by daysPastDue (not available as an OData filter),
+// then each matched loan is fetched individually via OData with $expand so that
+// LoanSetup and other nested entities are fully populated.
 func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
 	if minDaysPastDue < 0 {
 		return nil, fmt.Errorf("minDaysPastDue must be non-negative")
@@ -165,7 +166,7 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 			},
 		},
 		"sort": []map[string]any{
-			{"daysPastDue": map[string]any{"order": "desc"}},
+			{"daysPastDue": map[string]any{"order": "asc"}},
 		},
 	}
 	if offset > 0 {
@@ -177,11 +178,23 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 		return nil, err
 	}
 
-	var response SearchResponse
-	if err := json.Unmarshal(body, &response); err != nil {
+	var searchResp SearchResponse
+	if err := json.Unmarshal(body, &searchResp); err != nil {
 		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans response: %v\nResponse body: %s\n", err, string(body))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return response.D.Results, nil
+	// Fetch each loan individually via OData so LoanSetup (and other nested
+	// entities) are fully expanded — the search index does not include them.
+	loans := make([]Loan, 0, len(searchResp.D.Results))
+	for _, result := range searchResp.D.Results {
+		loan, err := c.GetLoan(string(result.ID))
+		if err != nil {
+			slog.Warn("GetPastDueLoans: skipping loan, failed to fetch details", "id", result.ID, "error", err)
+			continue
+		}
+		loans = append(loans, *loan)
+	}
+
+	return loans, nil
 }
