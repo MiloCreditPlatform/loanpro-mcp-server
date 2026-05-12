@@ -21,6 +21,8 @@ type MockLoan struct {
 	loanStatus          string
 	principalBalance    string
 	payoffAmount        string
+	active              string
+	daysPastDue         string
 }
 
 func (m MockLoan) GetID() string                  { return m.id }
@@ -29,8 +31,8 @@ func (m MockLoan) GetPrimaryCustomerName() string { return m.primaryCustomerName
 func (m MockLoan) GetLoanStatus() string          { return m.loanStatus }
 func (m MockLoan) GetPrincipalBalance() string    { return m.principalBalance }
 func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
-func (m MockLoan) GetActive() string              { return "1" }
-func (m MockLoan) GetDaysPastDue() string         { return "0" }
+func (m MockLoan) GetActive() string              { return m.active }
+func (m MockLoan) GetDaysPastDue() string         { return m.daysPastDue }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -218,6 +220,8 @@ func createMockClient() *MockLoanProClient {
 				loanStatus:          "Active",
 				principalBalance:    "25000.00",
 				payoffAmount:        "25250.00",
+				active:              "1",
+				daysPastDue:         "15",
 			},
 			"456": {
 				id:                  "456",
@@ -226,6 +230,8 @@ func createMockClient() *MockLoanProClient {
 				loanStatus:          "Current",
 				principalBalance:    "18500.00",
 				payoffAmount:        "18650.00",
+				active:              "0",
+				daysPastDue:         "0",
 			},
 		},
 		customers: map[string]MockCustomer{
@@ -821,5 +827,37 @@ func TestManager_ExecuteTool_GetPastDueLoans_Defaults(t *testing.T) {
 
 	if response.Error != nil {
 		t.Errorf("Expected no error, got %v", response.Error)
+	}
+}
+
+func TestManager_ExecuteTool_GetLoan_ActiveField(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	// Loan 123 is active (active="1")
+	resp := manager.ExecuteTool("get_loan", map[string]any{"loan_id": "123"})
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+	text := resp.Result.(map[string]any)["content"].([]map[string]any)[0]["text"].(string)
+	if !strings.Contains(text, "Active: 1") {
+		t.Errorf("Expected 'Active: 1' for active loan, got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_GetPastDueLoans_ActiveField(t *testing.T) {
+	mockClient := createMockClient()
+	manager := NewManager(mockClient)
+
+	resp := manager.ExecuteTool("get_past_due_loans", map[string]any{
+		"min_days_past_due": float64(5),
+		"limit":             float64(10),
+	})
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+	text := resp.Result.(map[string]any)["content"].([]map[string]any)[0]["text"].(string)
+	if !strings.Contains(text, "Active:") {
+		t.Errorf("Expected 'Active:' field in past due loans output, got: %s", text)
 	}
 }
