@@ -126,7 +126,10 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 
 const maxPastDueLimit = 200
 
-// GetPastDueLoans retrieves loans past due by more than minDaysPastDue days using OData filtering
+// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due
+// using the Elasticsearch search endpoint with a range query, which supports daysPastDue
+// filtering. The OData endpoint cannot filter on daysPastDue as it is not a direct
+// Loan entity property.
 func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
 	if minDaysPastDue < 0 {
 		return nil, fmt.Errorf("minDaysPastDue must be non-negative")
@@ -141,19 +144,40 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 		limit = maxPastDueLimit
 	}
 
-	params := map[string]string{
-		"$filter": fmt.Sprintf("DaysPastDue gt %d and loanStatusText eq 'Open'", minDaysPastDue),
-		"$expand": "Customers",
-		"$top":    fmt.Sprintf("%d", limit),
-		"$skip":   fmt.Sprintf("%d", offset),
+	searchBody := map[string]any{
+		"size": limit,
+		"query": map[string]any{
+			"bool": map[string]any{
+				"must": []map[string]any{
+					{
+						"range": map[string]any{
+							"daysPastDue": map[string]any{
+								"gt": minDaysPastDue,
+							},
+						},
+					},
+					{
+						"match": map[string]any{
+							"loanStatusText": "Open",
+						},
+					},
+				},
+			},
+		},
+		"sort": []map[string]any{
+			{"daysPastDue": map[string]any{"order": "desc"}},
+		},
+	}
+	if offset > 0 {
+		searchBody["from"] = offset
 	}
 
-	body, err := c.makeRequest("/public/api/1/odata.svc/Loans", params)
+	body, err := c.makePostRequest("/public/api/1/Loans/Autopal.Search()", searchBody)
 	if err != nil {
 		return nil, err
 	}
 
-	var response ODataLoansResponse
+	var response SearchResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans response: %v\nResponse body: %s\n", err, string(body))
 		return nil, fmt.Errorf("failed to parse response: %w", err)

@@ -6,7 +6,7 @@ import "fmt"
 func GetPastDueLoansTool() Tool {
 	return Tool{
 		Name:        "get_past_due_loans",
-		Description: "Get loans that are past due by at least a given number of days, queried directly from the OData API for complete coverage",
+		Description: "Get open loans with more than a given number of days past due, sorted by days past due descending",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
