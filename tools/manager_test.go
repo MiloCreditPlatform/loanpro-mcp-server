@@ -846,7 +846,21 @@ func TestManager_ExecuteTool_GetLoan_ActiveField(t *testing.T) {
 }
 
 func TestManager_ExecuteTool_GetPastDueLoans_ActiveField(t *testing.T) {
-	mockClient := createMockClient()
+	// Single-loan fixture so output is deterministic.
+	mockClient := &MockLoanProClient{
+		loans: map[string]MockLoan{
+			"123": {
+				id:                  "123",
+				displayID:           "LN00000123",
+				primaryCustomerName: "John Doe",
+				loanStatus:          "Active",
+				principalBalance:    "25000.00",
+				payoffAmount:        "25250.00",
+				active:              "1",
+				daysPastDue:         "15",
+			},
+		},
+	}
 	manager := NewManager(mockClient)
 
 	resp := manager.ExecuteTool("get_past_due_loans", map[string]any{
@@ -857,7 +871,7 @@ func TestManager_ExecuteTool_GetPastDueLoans_ActiveField(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", resp.Error)
 	}
 	text := resp.Result.(map[string]any)["content"].([]map[string]any)[0]["text"].(string)
-	if !strings.Contains(text, "Active:") {
-		t.Errorf("Expected 'Active:' field in past due loans output, got: %s", text)
+	if !strings.Contains(text, "Active: 1") {
+		t.Errorf("Expected 'Active: 1' in past due loans output, got: %s", text)
 	}
 }
