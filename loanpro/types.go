@@ -21,6 +21,7 @@ type LoanSettings struct {
 type LoanSetup struct {
 	ID               json.Number `json:"id"`
 	LoanID           json.Number `json:"loanId"`
+	Active           json.Number `json:"active"`
 	ContractDate     string      `json:"contractDate"`
 	LoanType         string      `json:"loanType"`
 	LoanClass        string      `json:"loanClass"`

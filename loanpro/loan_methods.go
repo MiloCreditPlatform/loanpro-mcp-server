@@ -14,9 +14,13 @@ func (l *Loan) GetDisplayID() string {
 	return l.DisplayID
 }
 
-// GetActive returns the active status as string
+// GetActive returns LoanSetup.active, which reflects the true loan lifecycle
+// state. If LoanSetup is not present, the account is considered inactive.
 func (l *Loan) GetActive() string {
-	return string(l.Active)
+	if l.LoanSetup != nil {
+		return string(l.LoanSetup.Active)
+	}
+	return "0"
 }
 
 // GetArchived returns the archived status as string

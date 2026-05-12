@@ -51,6 +51,7 @@ type Loan interface {
 	GetDisplayID() string
 	GetPrimaryCustomerName() string
 	GetLoanStatus() string
+	GetActive() string
 	GetPrincipalBalance() string
 	GetPayoffAmount() string
 	GetDaysPastDue() string

@@ -29,8 +29,8 @@ func (m *Manager) executeGetLoan(arguments map[string]any) MCPResponse {
 		return CreateErrorResponse(-1, err.Error(), nil)
 	}
 
-	text := fmt.Sprintf("Loan Details:\nID: %s\nDisplay ID: %s\nStatus: %s\nCustomer: %s\nBalance: $%s\nPayoff: $%s",
-		loan.GetID(), loan.GetDisplayID(), loan.GetLoanStatus(), loan.GetPrimaryCustomerName(), loan.GetPrincipalBalance(), loan.GetPayoffAmount())
+	text := fmt.Sprintf("Loan Details:\nID: %s\nDisplay ID: %s\nStatus: %s\nActive: %s\nCustomer: %s\nBalance: $%s\nPayoff: $%s",
+		loan.GetID(), loan.GetDisplayID(), loan.GetLoanStatus(), loan.GetActive(), loan.GetPrimaryCustomerName(), loan.GetPrincipalBalance(), loan.GetPayoffAmount())
 
 	return CreateSuccessResponse(text, nil)
 }

@@ -17,6 +17,7 @@ func TestLoan_GetMethods(t *testing.T) {
 			LoanStatusID: json.Number("2"),
 		},
 		LoanSetup: &LoanSetup{
+			Active:           json.Number("1"),
 			LoanAmount:       "25000.00",
 			ContractDate:     "/Date(1427829732)/",
 			FirstPaymentDate: "/Date(1430421732)/",
@@ -196,6 +197,11 @@ func TestLoan_EmptyData(t *testing.T) {
 
 	if loan.GetDaysPastDue() != "N/A" {
 		t.Errorf("Expected N/A for empty DaysPastDue, got %s", loan.GetDaysPastDue())
+	}
+
+	// Test GetActive returns "0" when LoanSetup is nil (no setup = inactive)
+	if loan.GetActive() != "0" {
+		t.Errorf("Expected GetActive to return '0' when LoanSetup is nil, got %s", loan.GetActive())
 	}
 
 	// Test empty string fallbacks
