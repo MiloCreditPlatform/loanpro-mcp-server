@@ -29,6 +29,7 @@ func (m MockLoan) GetPrimaryCustomerName() string { return m.primaryCustomerName
 func (m MockLoan) GetLoanStatus() string          { return m.loanStatus }
 func (m MockLoan) GetPrincipalBalance() string    { return m.principalBalance }
 func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
+func (m MockLoan) GetActive() string              { return "1" }
 func (m MockLoan) GetDaysPastDue() string         { return "0" }
 
 // MockCustomer implements the Customer interface

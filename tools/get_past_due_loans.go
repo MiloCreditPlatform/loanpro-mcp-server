@@ -67,8 +67,8 @@ func (m *Manager) executeGetPastDueLoans(arguments map[string]any) MCPResponse {
 
 	text := fmt.Sprintf("Past Due Loans (>%d days):\n", minDaysPastDue)
 	for _, loan := range loans {
-		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Days Past Due: %s, Balance: $%s\n",
-			loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetDaysPastDue(), loan.GetPrincipalBalance())
+		text += fmt.Sprintf("- ID: %s, Display ID: %s, Customer: %s, Active: %s, Days Past Due: %s, Balance: $%s\n",
+			loan.GetID(), loan.GetDisplayID(), loan.GetPrimaryCustomerName(), loan.GetActive(), loan.GetDaysPastDue(), loan.GetPrincipalBalance())
 	}
 
 	return CreateSuccessResponse(text, nil)
