@@ -124,8 +124,23 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 	return response.D.Results, nil
 }
 
-// GetPastDueLoans retrieves loans past due by at least minDaysPastDue days using OData filtering
+const maxPastDueLimit = 200
+
+// GetPastDueLoans retrieves loans past due by more than minDaysPastDue days using OData filtering
 func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
+	if minDaysPastDue < 0 {
+		return nil, fmt.Errorf("minDaysPastDue must be non-negative")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limit must be positive")
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("offset must be non-negative")
+	}
+	if limit > maxPastDueLimit {
+		limit = maxPastDueLimit
+	}
+
 	params := map[string]string{
 		"$filter": fmt.Sprintf("DaysPastDue gt %d and loanStatusText eq 'Open'", minDaysPastDue),
 		"$expand": "Customers",

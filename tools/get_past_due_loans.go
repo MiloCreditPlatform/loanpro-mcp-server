@@ -12,7 +12,7 @@ func GetPastDueLoansTool() Tool {
 			"properties": map[string]any{
 				"min_days_past_due": map[string]any{
 					"type":        "number",
-					"description": "Minimum number of days past due (inclusive threshold)",
+					"description": "Returns loans with MORE than this many days past due (exclusive threshold)",
 					"default":     5,
 				},
 				"limit": map[string]any{
@@ -43,6 +43,16 @@ func (m *Manager) executeGetPastDueLoans(arguments map[string]any) MCPResponse {
 	offset := 0
 	if v, ok := arguments["offset"].(float64); ok {
 		offset = int(v)
+	}
+
+	if minDaysPastDue < 0 {
+		return CreateErrorResponse(-1, "min_days_past_due must be non-negative", nil)
+	}
+	if limit <= 0 {
+		return CreateErrorResponse(-1, "limit must be positive", nil)
+	}
+	if offset < 0 {
+		return CreateErrorResponse(-1, "offset must be non-negative", nil)
 	}
 
 	loans, err := m.client.GetPastDueLoans(minDaysPastDue, limit, offset)
