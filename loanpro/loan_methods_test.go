@@ -17,6 +17,7 @@ func TestLoan_GetMethods(t *testing.T) {
 			LoanStatusID: json.Number("2"),
 		},
 		LoanSetup: &LoanSetup{
+			Active:           json.Number("1"),
 			LoanAmount:       "25000.00",
 			ContractDate:     "/Date(1427829732)/",
 			FirstPaymentDate: "/Date(1430421732)/",

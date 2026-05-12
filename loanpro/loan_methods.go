@@ -14,8 +14,12 @@ func (l *Loan) GetDisplayID() string {
 	return l.DisplayID
 }
 
-// GetActive returns the active status as string
+// GetActive returns the active status, preferring LoanSetup.active which reflects
+// the true loan lifecycle state over the root Loan.active soft-delete flag.
 func (l *Loan) GetActive() string {
+	if l.LoanSetup != nil {
+		return string(l.LoanSetup.Active)
+	}
 	return string(l.Active)
 }
 
