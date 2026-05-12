@@ -42,6 +42,7 @@ type LoanProClient interface {
 	GetLoanPayments(loanID string) ([]Payment, error)
 	GetLoanTransactions(loanID string) ([]Transaction, error)
 	GetLoanTransactionsWithOptions(loanID string, opts *TransactionOptions) ([]Transaction, error)
+	GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error)
 }
 
 // Loan represents loan data - simplified interface for tools

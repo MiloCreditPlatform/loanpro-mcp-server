@@ -172,6 +172,12 @@ type ODataResponse struct {
 	D any `json:"d"`
 }
 
+type ODataLoansResponse struct {
+	D struct {
+		Results []Loan `json:"results"`
+	} `json:"d"`
+}
+
 type SearchResponse struct {
 	D struct {
 		Results []Loan `json:"results"`

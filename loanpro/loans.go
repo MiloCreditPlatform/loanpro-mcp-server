@@ -123,3 +123,65 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 
 	return response.D.Results, nil
 }
+
+const maxPastDueLimit = 200
+
+// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due
+// using the Elasticsearch search endpoint with a range query, which supports daysPastDue
+// filtering. The OData endpoint cannot filter on daysPastDue as it is not a direct
+// Loan entity property.
+func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
+	if minDaysPastDue < 0 {
+		return nil, fmt.Errorf("minDaysPastDue must be non-negative")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limit must be positive")
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("offset must be non-negative")
+	}
+	if limit > maxPastDueLimit {
+		limit = maxPastDueLimit
+	}
+
+	searchBody := map[string]any{
+		"size": limit,
+		"query": map[string]any{
+			"bool": map[string]any{
+				"must": []map[string]any{
+					{
+						"range": map[string]any{
+							"daysPastDue": map[string]any{
+								"gt": minDaysPastDue,
+							},
+						},
+					},
+					{
+						"match": map[string]any{
+							"loanStatusText": "Open",
+						},
+					},
+				},
+			},
+		},
+		"sort": []map[string]any{
+			{"daysPastDue": map[string]any{"order": "desc"}},
+		},
+	}
+	if offset > 0 {
+		searchBody["from"] = offset
+	}
+
+	body, err := c.makePostRequest("/public/api/1/Loans/Autopal.Search()", searchBody)
+	if err != nil {
+		return nil, err
+	}
+
+	var response SearchResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans response: %v\nResponse body: %s\n", err, string(body))
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return response.D.Results, nil
+}
