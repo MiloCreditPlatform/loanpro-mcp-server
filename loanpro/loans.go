@@ -3,8 +3,10 @@ package loanpro
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 // GetLoan retrieves a loan by ID with expanded data
@@ -184,17 +186,42 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Fetch each loan individually via OData so LoanSetup (and other nested
-	// entities) are fully expanded — the search index does not include them.
-	loans := make([]Loan, 0, len(searchResp.D.Results))
-	for _, result := range searchResp.D.Results {
-		loan, err := c.GetLoan(string(result.ID))
-		if err != nil {
-			slog.Warn("GetPastDueLoans: skipping loan, failed to fetch details", "id", result.ID, "error", err)
-			continue
-		}
-		loans = append(loans, *loan)
+	if len(searchResp.D.Results) == 0 {
+		return []Loan{}, nil
 	}
+
+	// Build a single OData request for all matched IDs so LoanSetup and other
+	// nested entities are fully expanded in one round trip.
+	filterParts := make([]string, 0, len(searchResp.D.Results))
+	for _, result := range searchResp.D.Results {
+		filterParts = append(filterParts, fmt.Sprintf("id eq %s", string(result.ID)))
+	}
+
+	params := map[string]string{
+		"$filter": strings.Join(filterParts, " or "),
+		"$expand": "LoanSettings,LoanSetup,Customers,StatusArchive",
+		"$top":    strconv.Itoa(len(searchResp.D.Results)),
+	}
+
+	odataBody, err := c.makeRequest("/public/api/1/odata.svc/Loans", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var odataResp ODataLoansResponse
+	if err := json.Unmarshal(odataBody, &odataResp); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans OData response: %v\nResponse body: %s\n", err, string(odataBody))
+		return nil, fmt.Errorf("failed to parse OData response: %w", err)
+	}
+
+	loans := odataResp.D.Results
+
+	// OData doesn't preserve Elasticsearch sort order; re-sort by daysPastDue ascending.
+	sort.Slice(loans, func(i, j int) bool {
+		dpdI, _ := strconv.Atoi(loans[i].GetDaysPastDue())
+		dpdJ, _ := strconv.Atoi(loans[j].GetDaysPastDue())
+		return dpdI < dpdJ
+	})
 
 	return loans, nil
 }
