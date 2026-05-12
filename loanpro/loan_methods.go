@@ -14,13 +14,13 @@ func (l *Loan) GetDisplayID() string {
 	return l.DisplayID
 }
 
-// GetActive returns the active status, preferring LoanSetup.active which reflects
-// the true loan lifecycle state over the root Loan.active soft-delete flag.
+// GetActive returns LoanSetup.active, which reflects the true loan lifecycle
+// state. If LoanSetup is not present, the account is considered inactive.
 func (l *Loan) GetActive() string {
 	if l.LoanSetup != nil {
 		return string(l.LoanSetup.Active)
 	}
-	return string(l.Active)
+	return "0"
 }
 
 // GetArchived returns the archived status as string

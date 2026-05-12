@@ -199,6 +199,11 @@ func TestLoan_EmptyData(t *testing.T) {
 		t.Errorf("Expected N/A for empty DaysPastDue, got %s", loan.GetDaysPastDue())
 	}
 
+	// Test GetActive returns "0" when LoanSetup is nil (no setup = inactive)
+	if loan.GetActive() != "0" {
+		t.Errorf("Expected GetActive to return '0' when LoanSetup is nil, got %s", loan.GetActive())
+	}
+
 	// Test empty string fallbacks
 	if loan.GetLoanAmount() != "" {
 		t.Errorf("Expected empty string for LoanAmount, got %s", loan.GetLoanAmount())
