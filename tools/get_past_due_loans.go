@@ -6,7 +6,7 @@ import "fmt"
 func GetPastDueLoansTool() Tool {
 	return Tool{
 		Name:        "get_past_due_loans",
-		Description: "Get open loans with more than a given number of days past due, sorted by days past due descending",
+		Description: "Get open loans with more than a given number of days past due, sorted by days past due ascending (most recently delinquent first)",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

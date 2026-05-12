@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 // GetLoan retrieves a loan by ID with expanded data
@@ -125,11 +128,12 @@ func (c *Client) SearchLoans(searchTerm, status string, limit, offset int) ([]Lo
 }
 
 const maxPastDueLimit = 200
+const odataBatchSize = 50
 
-// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due
-// using the Elasticsearch search endpoint with a range query, which supports daysPastDue
-// filtering. The OData endpoint cannot filter on daysPastDue as it is not a direct
-// Loan entity property.
+// GetPastDueLoans retrieves open loans with more than minDaysPastDue days past due.
+// Elasticsearch is used to filter by daysPastDue (not available as an OData filter),
+// then each matched loan is fetched individually via OData with $expand so that
+// LoanSetup and other nested entities are fully populated.
 func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, error) {
 	if minDaysPastDue < 0 {
 		return nil, fmt.Errorf("minDaysPastDue must be non-negative")
@@ -165,7 +169,7 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 			},
 		},
 		"sort": []map[string]any{
-			{"daysPastDue": map[string]any{"order": "desc"}},
+			{"daysPastDue": map[string]any{"order": "asc"}},
 		},
 	}
 	if offset > 0 {
@@ -177,11 +181,71 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 		return nil, err
 	}
 
-	var response SearchResponse
-	if err := json.Unmarshal(body, &response); err != nil {
+	var searchResp SearchResponse
+	if err := json.Unmarshal(body, &searchResp); err != nil {
 		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans response: %v\nResponse body: %s\n", err, string(body))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return response.D.Results, nil
+	if len(searchResp.D.Results) == 0 {
+		return []Loan{}, nil
+	}
+
+	// Validate IDs and chunk into batches to stay within OData URL length limits.
+	// Each batch gets its own $filter=id eq X or id eq Y request with $expand.
+	results := searchResp.D.Results
+	loans := make([]Loan, 0, len(results))
+	for start := 0; start < len(results); start += odataBatchSize {
+		end := start + odataBatchSize
+		if end > len(results) {
+			end = len(results)
+		}
+
+		filterParts := make([]string, 0, end-start)
+		for _, result := range results[start:end] {
+			idStr := strings.TrimSpace(string(result.ID))
+			if _, err := strconv.Atoi(idStr); err != nil {
+				return nil, fmt.Errorf("invalid loan id in search response: %q", idStr)
+			}
+			filterParts = append(filterParts, "id eq "+idStr)
+		}
+
+		params := map[string]string{
+			"$filter": strings.Join(filterParts, " or "),
+			"$expand": "LoanSettings,LoanSetup,Customers,StatusArchive",
+			"$top":    strconv.Itoa(end - start),
+		}
+
+		odataBody, err := c.makeRequest("/public/api/1/odata.svc/Loans", params)
+		if err != nil {
+			return nil, err
+		}
+
+		var batch ODataLoansResponse
+		if err := json.Unmarshal(odataBody, &batch); err != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetPastDueLoans OData response: %v\nResponse body: %s\n", err, string(odataBody))
+			return nil, fmt.Errorf("failed to parse OData response: %w", err)
+		}
+		loans = append(loans, batch.D.Results...)
+	}
+
+	if len(loans) == 0 {
+		return nil, fmt.Errorf("failed to fetch loan details: Elasticsearch returned %d matches but OData returned no results", len(results))
+	}
+
+	// OData doesn't preserve Elasticsearch sort order; re-sort by daysPastDue ascending.
+	// Loans with unparseable daysPastDue are pushed to the end.
+	sort.Slice(loans, func(i, j int) bool {
+		dpdI, errI := strconv.Atoi(loans[i].GetDaysPastDue())
+		dpdJ, errJ := strconv.Atoi(loans[j].GetDaysPastDue())
+		if errI != nil {
+			dpdI = int(^uint(0) >> 1)
+		}
+		if errJ != nil {
+			dpdJ = int(^uint(0) >> 1)
+		}
+		return dpdI < dpdJ
+	})
+
+	return loans, nil
 }
