@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -22,6 +23,8 @@ func reversedPaymentsClient() *MockLoanProClient {
 	}
 }
 
+// responseText extracts the single text payload from a successful MCP
+// response, failing the test if the response is shaped any other way.
 func responseText(t *testing.T, response MCPResponse) string {
 	t.Helper()
 
@@ -43,6 +46,8 @@ func responseText(t *testing.T, response MCPResponse) string {
 	return text
 }
 
+// TestGetLoanPayments_MarksReversedPayments verifies that a reversed payment is
+// labelled as such and counted in the trailing summary.
 func TestGetLoanPayments_MarksReversedPayments(t *testing.T) {
 	manager := NewManager(reversedPaymentsClient())
 
@@ -61,6 +66,8 @@ func TestGetLoanPayments_MarksReversedPayments(t *testing.T) {
 	}
 }
 
+// TestGetLoanPayments_ReversedOnly verifies that reversed_only narrows the
+// history to reversed payments.
 func TestGetLoanPayments_ReversedOnly(t *testing.T) {
 	manager := NewManager(reversedPaymentsClient())
 
@@ -77,6 +84,8 @@ func TestGetLoanPayments_ReversedOnly(t *testing.T) {
 	}
 }
 
+// TestGetLoanPayments_ReversedOnly_NoneFound verifies that a loan with no
+// reversed payments says so explicitly rather than returning a bare header.
 func TestGetLoanPayments_ReversedOnly_NoneFound(t *testing.T) {
 	manager := NewManager(createMockClient())
 
@@ -108,6 +117,8 @@ func TestGetLoanTransactions_ListsReversedPayments(t *testing.T) {
 	}
 }
 
+// TestGetLoanTransactions_NoSectionWhenNothingReversed verifies that the
+// trailing section is omitted when nothing was reversed.
 func TestGetLoanTransactions_NoSectionWhenNothingReversed(t *testing.T) {
 	manager := NewManager(createMockClient())
 
@@ -117,5 +128,35 @@ func TestGetLoanTransactions_NoSectionWhenNothingReversed(t *testing.T) {
 
 	if strings.Contains(text, "Reversed payments") {
 		t.Errorf("Expected no reversed payments section, got: %s", text)
+	}
+}
+
+// failingPaymentsClient is a client whose payment lookup always fails, used to
+// check that get_loan_transactions reports the failure instead of silently
+// implying that no payments were reversed.
+type failingPaymentsClient struct {
+	*MockLoanProClient
+}
+
+// GetLoanPayments always fails.
+func (c *failingPaymentsClient) GetLoanPayments(string) ([]Payment, error) {
+	return nil, errors.New("loanpro unavailable")
+}
+
+// TestGetLoanTransactions_WarnsWhenReversedPaymentsUnavailable verifies that a
+// failed payment lookup is surfaced. Returning nothing would be indistinguishable
+// from a loan with no reversed payments.
+func TestGetLoanTransactions_WarnsWhenReversedPaymentsUnavailable(t *testing.T) {
+	manager := NewManager(&failingPaymentsClient{MockLoanProClient: reversedPaymentsClient()})
+
+	text := responseText(t, manager.ExecuteTool("get_loan_transactions", map[string]any{
+		"loan_id": "456",
+	}))
+
+	if !strings.Contains(text, "WARNING: Reversed payments could not be retrieved") {
+		t.Errorf("Expected a warning when the payment lookup fails, got: %s", text)
+	}
+	if strings.Contains(text, "Reversed payments (excluded") {
+		t.Errorf("Expected no reversed payments section when the lookup failed, got: %s", text)
 	}
 }

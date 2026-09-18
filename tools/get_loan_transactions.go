@@ -119,14 +119,16 @@ func (m *Manager) executeGetLoanTransactions(arguments map[string]any) MCPRespon
 
 // reversedPaymentsNote returns a section listing payments that were reversed in
 // the LMS. LoanPro omits these from the Transactions endpoint, which makes a
-// failed payment look like a payment that was never attempted. Failure to fetch
+// failed payment look like a payment that was never attempted. Failing to fetch
 // them is not fatal - the transaction list is still worth returning - so this
-// returns an empty string on error.
+// degrades to a warning rather than failing the tool. The warning matters: an
+// empty section and a failed lookup would otherwise be indistinguishable, and a
+// caller would read "no reversed payments" from what was really "do not know".
 func (m *Manager) reversedPaymentsNote(loanID string) string {
 	payments, err := m.client.GetLoanPayments(loanID)
 	if err != nil {
 		LogError("get_loan_transactions", err, fmt.Sprintf("fetching reversed payments for loan ID %s", loanID))
-		return ""
+		return "\nWARNING: Reversed payments could not be retrieved. This response may omit reversed payments - do not read it as proof that none exist.\n"
 	}
 
 	var reversed []Payment
