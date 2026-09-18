@@ -6,7 +6,7 @@ import "fmt"
 func GetLoanTransactionsTool() Tool {
 	return Tool{
 		Name:        "get_loan_transactions",
-		Description: "Get detailed transaction history for a loan including payments, charges, credits, and adjustments with payment application breakdown. Supports pagination to retrieve results in batches. Returns pagination metadata (total count, has_more flag).",
+		Description: "Get detailed transaction history for a loan including payments, charges, credits, and adjustments with payment application breakdown. Supports pagination to retrieve results in batches. Returns pagination metadata (total count, has_more flag). NOTE: LoanPro excludes reversed payments from this endpoint, so a payment that failed and was auto-reversed will be missing entirely rather than shown as failed. Any such payments are listed in a separate section at the end of the output; use get_loan_payments for the full picture.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -112,5 +112,38 @@ func (m *Manager) executeGetLoanTransactions(arguments map[string]any) MCPRespon
 		}
 	}
 
+	text += m.reversedPaymentsNote(loanID)
+
 	return CreateSuccessResponse(text, nil)
+}
+
+// reversedPaymentsNote returns a section listing payments that were reversed in
+// the LMS. LoanPro omits these from the Transactions endpoint, which makes a
+// failed payment look like a payment that was never attempted. Failure to fetch
+// them is not fatal - the transaction list is still worth returning - so this
+// returns an empty string on error.
+func (m *Manager) reversedPaymentsNote(loanID string) string {
+	payments, err := m.client.GetLoanPayments(loanID)
+	if err != nil {
+		LogError("get_loan_transactions", err, fmt.Sprintf("fetching reversed payments for loan ID %s", loanID))
+		return ""
+	}
+
+	var reversed []Payment
+	for _, payment := range payments {
+		if isReversed(payment) {
+			reversed = append(reversed, payment)
+		}
+	}
+	if len(reversed) == 0 {
+		return ""
+	}
+
+	note := "\nReversed payments (excluded from the transaction list above):\n"
+	for _, payment := range reversed {
+		note += fmt.Sprintf("- Date: %s, Amount: $%s, ID: %s, Status: Reversed\n",
+			payment.GetDate(), payment.GetAmount(), payment.GetID())
+	}
+	note += "These payments did not stand. LoanPro does not record why; check the processor's return notification for the ACH return code.\n"
+	return note
 }
