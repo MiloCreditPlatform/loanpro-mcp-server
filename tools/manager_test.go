@@ -27,6 +27,9 @@ type MockLoan struct {
 	active              string
 	daysPastDue         string
 	archived            string
+	created             string
+	portfolio           string
+	subPortfolio        string
 }
 
 func (m MockLoan) GetID() string                  { return m.id }
@@ -38,6 +41,7 @@ func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
 func (m MockLoan) GetActive() string              { return m.active }
 func (m MockLoan) GetDaysPastDue() string         { return m.daysPastDue }
 func (m MockLoan) GetArchived() string            { return m.archived }
+func (m MockLoan) GetCreatedDate() string         { return m.created }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -183,6 +187,24 @@ func (m *MockLoanProClient) GetPastDueLoans(minDaysPastDue, limit, offset int) (
 		}
 		results = append(results, loan)
 		count++
+	}
+	return results, nil
+}
+
+func (m *MockLoanProClient) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo string) ([]Loan, error) {
+	var results []Loan
+	for _, id := range []string{"100", "101", "102", "103", "104", "123", "456"} {
+		loan, ok := m.loans[id]
+		if !ok || loan.archived == "1" || !strings.EqualFold(loan.portfolio, portfolio) {
+			continue
+		}
+		if subPortfolio != "" && !strings.EqualFold(loan.subPortfolio, subPortfolio) {
+			continue
+		}
+		if (createdFrom != "" && loan.created < createdFrom) || (createdTo != "" && loan.created > createdTo) {
+			continue
+		}
+		results = append(results, loan)
 	}
 	return results, nil
 }
@@ -965,6 +987,85 @@ func TestManager_ExecuteTool_ArchiveLoans_InvalidInput(t *testing.T) {
 		{"loan_ids": "123"},
 		{"loan_ids": []any{"123)?$x"}},
 		{"loan_ids": make([]any, maxArchiveBatch+1)},
+	}
+	for _, args := range tests {
+		if resp := manager.ExecuteTool("archive_loans", args); resp.Error == nil {
+			t.Errorf("Expected error for arguments %v", args)
+		}
+	}
+}
+
+func portfolioTestClient() *MockLoanProClient {
+	loan := func(id, created, portfolio, sub, archived string) MockLoan {
+		return MockLoan{id: id, displayID: "CL" + id + "dev", primaryCustomerName: "Test User", loanStatus: "Open", created: created, portfolio: portfolio, subPortfolio: sub, archived: archived}
+	}
+	return &MockLoanProClient{
+		loans: map[string]MockLoan{
+			"100": loan("100", "2025-01-15", "Test", "Development", "0"),
+			"101": loan("101", "2025-06-01", "Test", "Development", "0"),
+			"102": loan("102", "2025-06-02", "Test", "Staging", "0"),
+			"103": loan("103", "2025-06-03", "Production", "Retail", "0"),
+			"104": loan("104", "2025-06-04", "Test", "Development", "1"),
+		},
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_PortfolioDryRun(t *testing.T) {
+	mockClient := portfolioTestClient()
+	manager := NewManager(mockClient)
+
+	text := responseText(t, manager.ExecuteTool("archive_loans", map[string]any{
+		"portfolio":     "test",
+		"sub_portfolio": "development",
+		"created_from":  "2025-06-01",
+		"created_to":    "2025-12-31",
+	}))
+
+	if len(mockClient.archivedIDs) != 0 {
+		t.Errorf("Dry run must not archive loans, archived: %v", mockClient.archivedIDs)
+	}
+	if !strings.Contains(text, "DRY RUN: 1 live loan(s) match portfolio test > development, created 2025-06-01 to 2025-12-31") {
+		t.Errorf("Unexpected dry run header: %s", text)
+	}
+	if !strings.Contains(text, "ID: 101,") {
+		t.Errorf("Expected loan 101 listed, got: %s", text)
+	}
+	for _, id := range []string{"100", "102", "103", "104"} {
+		if strings.Contains(text, "ID: "+id+",") {
+			t.Errorf("Loan %s should not match, got: %s", id, text)
+		}
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_PortfolioExecuteWithLimitAndExclude(t *testing.T) {
+	mockClient := portfolioTestClient()
+	manager := NewManager(mockClient)
+
+	text := responseText(t, manager.ExecuteTool("archive_loans", map[string]any{
+		"portfolio":        "Test",
+		"exclude_loan_ids": []any{"100"},
+		"limit":            float64(1),
+		"dry_run":          false,
+	}))
+
+	if len(mockClient.archivedIDs) != 1 || mockClient.archivedIDs[0] != "101" {
+		t.Errorf("Expected only loan 101 archived, got %v", mockClient.archivedIDs)
+	}
+	if !strings.Contains(text, "1 archived, 0 failed, 1 excluded, 1 remaining") {
+		t.Errorf("Unexpected summary: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_PortfolioInvalidInput(t *testing.T) {
+	manager := NewManager(portfolioTestClient())
+
+	tests := []map[string]any{
+		{"portfolio": "Test", "loan_ids": []any{"100"}},
+		{"portfolio": "Test", "created_from": "06/01/2025"},
+		{"portfolio": "Test", "created_from": "2025-07-01", "created_to": "2025-06-01"},
+		{"portfolio": "Test", "limit": float64(0)},
+		{"portfolio": "Test", "limit": float64(maxArchiveBatch + 1)},
+		{"portfolio": "Test", "exclude_loan_ids": []any{"abc"}},
 	}
 	for _, args := range tests {
 		if resp := manager.ExecuteTool("archive_loans", args); resp.Error == nil {

@@ -153,6 +153,19 @@ func (ca *ClientAdapter) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]t
 	return result, nil
 }
 
+func (ca *ClientAdapter) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo string) ([]tools.Loan, error) {
+	loans, err := ca.client.GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]tools.Loan, len(loans))
+	for i, loan := range loans {
+		result[i] = &loan
+	}
+	return result, nil
+}
+
 func (ca *ClientAdapter) ArchiveLoan(id string) error {
 	return ca.client.ArchiveLoan(id)
 }

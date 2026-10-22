@@ -64,6 +64,17 @@ type StatusArchiveWrapper struct {
 	Results []StatusArchiveEntry `json:"results"`
 }
 
+// Portfolio represents a portfolio or sub-portfolio linked to a loan
+type Portfolio struct {
+	ID    json.Number `json:"id"`
+	Title string      `json:"title"`
+}
+
+// PortfoliosWrapper wraps portfolio results
+type PortfoliosWrapper struct {
+	Results []Portfolio `json:"results"`
+}
+
 // Loan represents loan data
 type Loan struct {
 	ID            json.Number           `json:"id"`
@@ -76,6 +87,8 @@ type Loan struct {
 	LoanSetup     *LoanSetup            `json:"LoanSetup,omitempty"`
 	Customers     *CustomersWrapper     `json:"Customers,omitempty"`
 	StatusArchive *StatusArchiveWrapper `json:"StatusArchive,omitempty"`
+	Portfolios    *PortfoliosWrapper    `json:"Portfolios,omitempty"`
+	SubPortfolios *PortfoliosWrapper    `json:"SubPortfolios,omitempty"`
 	// Fields that appear in search results but not in individual loan retrieval
 	PrimaryCustomerName string      `json:"primaryCustomerName,omitempty"`
 	LoanStatusText      string      `json:"loanStatusText,omitempty"`

@@ -1,6 +1,9 @@
 package loanpro
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Helper methods for Loan to get string values from json.Number fields
 
@@ -26,6 +29,25 @@ func (l *Loan) GetActive() string {
 // GetArchived returns the archived status as string
 func (l *Loan) GetArchived() string {
 	return string(l.Archived)
+}
+
+// InPortfolio reports whether the loan belongs to the named portfolio and, if subPortfolio
+// is non-empty, the named sub-portfolio. Names are matched case-insensitively.
+func (l *Loan) InPortfolio(portfolio, subPortfolio string) bool {
+	return hasPortfolioTitle(l.Portfolios, portfolio) &&
+		(subPortfolio == "" || hasPortfolioTitle(l.SubPortfolios, subPortfolio))
+}
+
+func hasPortfolioTitle(portfolios *PortfoliosWrapper, title string) bool {
+	if portfolios == nil {
+		return false
+	}
+	for _, p := range portfolios.Results {
+		if strings.EqualFold(strings.TrimSpace(p.Title), strings.TrimSpace(title)) {
+			return true
+		}
+	}
+	return false
 }
 
 // GetDaysPastDue returns days past due from various sources
