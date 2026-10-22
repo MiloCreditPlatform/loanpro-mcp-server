@@ -191,7 +191,7 @@ func (m *MockLoanProClient) GetPastDueLoans(minDaysPastDue, limit, offset int) (
 	return results, nil
 }
 
-func (m *MockLoanProClient) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo string) ([]Loan, error) {
+func (m *MockLoanProClient) GetLoansByPortfolio(category, portfolio, subPortfolio, createdFrom, createdTo string) ([]Loan, error) {
 	var results []Loan
 	for _, id := range []string{"100", "101", "102", "103", "104", "123", "456"} {
 		loan, ok := m.loans[id]
@@ -1024,7 +1024,7 @@ func TestManager_ExecuteTool_ArchiveLoans_PortfolioDryRun(t *testing.T) {
 	if len(mockClient.archivedIDs) != 0 {
 		t.Errorf("Dry run must not archive loans, archived: %v", mockClient.archivedIDs)
 	}
-	if !strings.Contains(text, "DRY RUN: 1 live loan(s) match portfolio test > development, created 2025-06-01 to 2025-12-31") {
+	if !strings.Contains(text, "DRY RUN: 1 live loan(s) match portfolio test, sub-portfolio development, created 2025-06-01 to 2025-12-31") {
 		t.Errorf("Unexpected dry run header: %s", text)
 	}
 	if !strings.Contains(text, "ID: 101,") {

@@ -264,39 +264,94 @@ func (c *Client) ArchiveLoan(loanID string) error {
 	return err
 }
 
+// FindPortfolioID resolves a portfolio name, optionally within a named portfolio category,
+// to its ID. Names are matched case-insensitively. Portfolio names are not unique across
+// categories, so an ambiguous name without a category is an error.
+func (c *Client) FindPortfolioID(category, portfolio string) (string, error) {
+	body, err := c.makeRequest("/public/api/1/odata.svc/PortfolioCategories", map[string]string{
+		"$expand": "Portfolios",
+		"$top":    "1000",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var response ODataPortfolioCategoriesResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse PortfolioCategories response: %v\nResponse body: %s\n", err, string(body))
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	var ids, descriptions []string
+	for _, cat := range response.D.Results {
+		if category != "" && !strings.EqualFold(strings.TrimSpace(cat.Title), strings.TrimSpace(category)) {
+			continue
+		}
+		if cat.Portfolios == nil {
+			continue
+		}
+		for _, p := range cat.Portfolios.Results {
+			if strings.EqualFold(strings.TrimSpace(p.Title), strings.TrimSpace(portfolio)) {
+				ids = append(ids, string(p.ID))
+				descriptions = append(descriptions, fmt.Sprintf("%s > %s (id %s)", cat.Title, p.Title, p.ID))
+			}
+		}
+	}
+
+	switch len(ids) {
+	case 0:
+		if category != "" {
+			return "", fmt.Errorf("portfolio %q not found in category %q", portfolio, category)
+		}
+		return "", fmt.Errorf("portfolio %q not found", portfolio)
+	case 1:
+		return ids[0], nil
+	default:
+		return "", fmt.Errorf("portfolio %q is ambiguous, specify its category: %s", portfolio, strings.Join(descriptions, "; "))
+	}
+}
+
 const portfolioSearchPageSize = 500
 const maxPortfolioSearchHits = 10000
 
-// GetLoansByPortfolio returns live (non-archived) loans in the named portfolio and
-// optional sub-portfolio, created within [createdFrom, createdTo] (YYYY-MM-DD, inclusive).
-// Elasticsearch narrows by created date; portfolio membership is then checked on the
-// OData records (expanded with Portfolios/SubPortfolios) so names can be used directly.
-func (c *Client) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo string) ([]Loan, error) {
+// GetLoansByPortfolio returns live (non-archived) loans in the named portfolio (optionally
+// within a portfolio category, and optionally also in a named sub-portfolio), created within
+// [createdFrom, createdTo] (YYYY-MM-DD, inclusive, UTC). Elasticsearch filters by portfolio ID
+// and created date; matches are then fetched via OData to confirm membership and archive state.
+func (c *Client) GetLoansByPortfolio(category, portfolio, subPortfolio, createdFrom, createdTo string) ([]Loan, error) {
 	if strings.TrimSpace(portfolio) == "" {
 		return nil, fmt.Errorf("portfolio is required")
 	}
 
+	// The search index stores created as "yyyy-MM-dd HH:mm:ss" (UTC) and rejects date-only values.
+	const createdLayout = "2006-01-02 15:04:05"
 	createdRange := map[string]any{}
 	if createdFrom != "" {
-		createdRange["gte"] = createdFrom
+		from, err := time.Parse("2006-01-02", createdFrom)
+		if err != nil {
+			return nil, fmt.Errorf("createdFrom must be YYYY-MM-DD: %w", err)
+		}
+		createdRange["gte"] = from.Format(createdLayout)
 	}
 	if createdTo != "" {
-		// created is a timestamp; use "< next day" so the whole end date is included.
+		// Use "< next day" so the whole end date is included.
 		to, err := time.Parse("2006-01-02", createdTo)
 		if err != nil {
 			return nil, fmt.Errorf("createdTo must be YYYY-MM-DD: %w", err)
 		}
-		createdRange["lt"] = to.AddDate(0, 0, 1).Format("2006-01-02")
+		createdRange["lt"] = to.AddDate(0, 0, 1).Format(createdLayout)
 	}
-	query := map[string]any{"match_all": map[string]any{}}
+
+	portfolioID, err := c.FindPortfolioID(category, portfolio)
+	if err != nil {
+		return nil, err
+	}
+
+	filters := []map[string]any{
+		{"terms": map[string]any{"portfolios": []string{portfolioID}}},
+	}
 	if len(createdRange) > 0 {
-		query = map[string]any{
-			"bool": map[string]any{
-				"filter": map[string]any{
-					"range": map[string]any{"created": createdRange},
-				},
-			},
-		}
+		filters = append(filters, map[string]any{"range": map[string]any{"created": createdRange}})
 	}
 
 	var ids []string
@@ -304,7 +359,7 @@ func (c *Client) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, creat
 		searchBody := map[string]any{
 			"size":  portfolioSearchPageSize,
 			"from":  offset,
-			"query": query,
+			"query": map[string]any{"bool": map[string]any{"filter": filters}},
 			"sort":  []map[string]any{{"id": map[string]any{"order": "asc"}}},
 		}
 		body, err := c.makePostRequest("/public/api/1/Loans/Autopal.Search()", searchBody)
@@ -312,13 +367,16 @@ func (c *Client) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, creat
 			return nil, err
 		}
 
-		var searchResp SearchResponse
+		var searchResp SearchIDsResponse
 		if err := json.Unmarshal(body, &searchResp); err != nil {
 			fmt.Fprintf(os.Stderr, "[ERROR] Failed to parse GetLoansByPortfolio response: %v\nResponse body: %s\n", err, string(body))
 			return nil, fmt.Errorf("failed to parse response: %w", err)
 		}
+		if searchResp.Status.Error != nil {
+			return nil, fmt.Errorf("loan search failed: %s", searchResp.Status.Error.Message)
+		}
 		if searchResp.D.Summary.TotalHits > maxPortfolioSearchHits {
-			return nil, fmt.Errorf("created date range matches %d loans (max %d); narrow created_from/created_to", searchResp.D.Summary.TotalHits, maxPortfolioSearchHits)
+			return nil, fmt.Errorf("selection matches %d loans (max %d); narrow created_from/created_to", searchResp.D.Summary.TotalHits, maxPortfolioSearchHits)
 		}
 
 		for _, result := range searchResp.D.Results {
@@ -358,7 +416,7 @@ func (c *Client) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, creat
 			return nil, fmt.Errorf("failed to parse OData response: %w", err)
 		}
 		for _, loan := range batch.D.Results {
-			if loan.GetArchived() != "1" && loan.InPortfolio(portfolio, subPortfolio) {
+			if loan.GetArchived() != "1" && loan.InPortfolio(portfolioID, subPortfolio) {
 				loans = append(loans, loan)
 			}
 		}

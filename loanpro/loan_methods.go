@@ -31,19 +31,27 @@ func (l *Loan) GetArchived() string {
 	return string(l.Archived)
 }
 
-// InPortfolio reports whether the loan belongs to the named portfolio and, if subPortfolio
-// is non-empty, the named sub-portfolio. Names are matched case-insensitively.
-func (l *Loan) InPortfolio(portfolio, subPortfolio string) bool {
-	return hasPortfolioTitle(l.Portfolios, portfolio) &&
-		(subPortfolio == "" || hasPortfolioTitle(l.SubPortfolios, subPortfolio))
-}
-
-func hasPortfolioTitle(portfolios *PortfoliosWrapper, title string) bool {
-	if portfolios == nil {
+// InPortfolio reports whether the loan belongs to the portfolio with the given ID and, if
+// subPortfolio is non-empty, the sub-portfolio with that name (case-insensitive).
+func (l *Loan) InPortfolio(portfolioID, subPortfolio string) bool {
+	if l.Portfolios == nil {
 		return false
 	}
-	for _, p := range portfolios.Results {
-		if strings.EqualFold(strings.TrimSpace(p.Title), strings.TrimSpace(title)) {
+	found := false
+	for _, p := range l.Portfolios.Results {
+		if string(p.ID) == portfolioID {
+			found = true
+			break
+		}
+	}
+	if !found || subPortfolio == "" {
+		return found
+	}
+	if l.SubPortfolios == nil {
+		return false
+	}
+	for _, p := range l.SubPortfolios.Results {
+		if strings.EqualFold(strings.TrimSpace(p.Title), strings.TrimSpace(subPortfolio)) {
 			return true
 		}
 	}

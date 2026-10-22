@@ -153,8 +153,8 @@ func (ca *ClientAdapter) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]t
 	return result, nil
 }
 
-func (ca *ClientAdapter) GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo string) ([]tools.Loan, error) {
-	loans, err := ca.client.GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo)
+func (ca *ClientAdapter) GetLoansByPortfolio(category, portfolio, subPortfolio, createdFrom, createdTo string) ([]tools.Loan, error) {
+	loans, err := ca.client.GetLoansByPortfolio(category, portfolio, subPortfolio, createdFrom, createdTo)
 	if err != nil {
 		return nil, err
 	}

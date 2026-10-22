@@ -66,8 +66,23 @@ type StatusArchiveWrapper struct {
 
 // Portfolio represents a portfolio or sub-portfolio linked to a loan
 type Portfolio struct {
-	ID    json.Number `json:"id"`
-	Title string      `json:"title"`
+	ID         json.Number `json:"id"`
+	Title      string      `json:"title"`
+	CategoryID json.Number `json:"categoryId"`
+}
+
+// PortfolioCategory groups portfolios (e.g. category "Test" holds portfolio "Development")
+type PortfolioCategory struct {
+	ID         json.Number        `json:"id"`
+	Title      string             `json:"title"`
+	Portfolios *PortfoliosWrapper `json:"Portfolios,omitempty"`
+}
+
+// ODataPortfolioCategoriesResponse wraps portfolio category results
+type ODataPortfolioCategoriesResponse struct {
+	D struct {
+		Results []PortfolioCategory `json:"results"`
+	} `json:"d"`
 }
 
 // PortfoliosWrapper wraps portfolio results
@@ -200,6 +215,31 @@ type SearchResponse struct {
 			TotalTime int `json:"totalTime"`
 		} `json:"summary"`
 	} `json:"d"`
+	// Search errors (e.g. a bad query) come back with HTTP 200 and an empty result set
+	Status struct {
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	} `json:"status"`
+}
+
+// SearchIDsResponse decodes only loan IDs from a search. Search results carry lowercase
+// fields (e.g. "portfolios" as an array) that Go's case-insensitive JSON matching would
+// otherwise try to decode into Loan's OData fields of a different shape.
+type SearchIDsResponse struct {
+	D struct {
+		Results []struct {
+			ID json.Number `json:"id"`
+		} `json:"results"`
+		Summary struct {
+			TotalHits int `json:"totalHits"`
+		} `json:"summary"`
+	} `json:"d"`
+	Status struct {
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	} `json:"status"`
 }
 
 type CustomerSearchResponse struct {

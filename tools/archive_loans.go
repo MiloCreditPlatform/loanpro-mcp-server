@@ -14,7 +14,7 @@ func ArchiveLoansTool() Tool {
 	return Tool{
 		Name: "archive_loans",
 		Description: "Archive loans, removing them from live, billable accounts (e.g. test loans). " +
-			"Select loans either by loan_ids, or by portfolio (plus optional sub_portfolio and created date range). " +
+			"Select loans either by loan_ids, or by portfolio (plus optional portfolio_category, sub_portfolio and created date range). " +
 			"Runs as a dry run by default and only lists the loans that would be archived; set dry_run=false to archive. " +
 			"Each archive incurs a one-time LoanPro fee. Archived loans stop being serviced but can be restored by LoanPro (archived=0).",
 		InputSchema: map[string]any{
@@ -25,9 +25,13 @@ func ArchiveLoansTool() Tool {
 					"items":       map[string]any{"type": "string"},
 					"description": fmt.Sprintf("Loan IDs (numeric LoanPro IDs, not display IDs) to archive, max %d. Cannot be combined with portfolio.", maxArchiveBatch),
 				},
+				"portfolio_category": map[string]any{
+					"type":        "string",
+					"description": "Portfolio category containing the portfolio (name, case-insensitive), e.g. \"Test\". Required when the portfolio name exists in more than one category.",
+				},
 				"portfolio": map[string]any{
 					"type":        "string",
-					"description": "Archive live loans in this portfolio (name, case-insensitive), e.g. \"Test\"",
+					"description": "Archive live loans in this portfolio (name, case-insensitive), e.g. \"Development\"",
 				},
 				"sub_portfolio": map[string]any{
 					"type":        "string",
@@ -171,6 +175,8 @@ func (m *Manager) archiveByIDs(loanIDs []string, dryRun bool) MCPResponse {
 }
 
 func (m *Manager) archiveByPortfolio(portfolio string, arguments map[string]any, dryRun bool) MCPResponse {
+	category, _ := arguments["portfolio_category"].(string)
+	category = strings.TrimSpace(category)
 	subPortfolio, _ := arguments["sub_portfolio"].(string)
 	subPortfolio = strings.TrimSpace(subPortfolio)
 
@@ -210,14 +216,17 @@ func (m *Manager) archiveByPortfolio(portfolio string, arguments map[string]any,
 	}
 
 	selection := "portfolio " + portfolio
+	if category != "" {
+		selection = "portfolio " + category + " > " + portfolio
+	}
 	if subPortfolio != "" {
-		selection += " > " + subPortfolio
+		selection += ", sub-portfolio " + subPortfolio
 	}
 	if createdFrom != "" || createdTo != "" {
 		selection += fmt.Sprintf(", created %s to %s", valueOr(createdFrom, "any"), valueOr(createdTo, "any"))
 	}
 
-	matches, err := m.client.GetLoansByPortfolio(portfolio, subPortfolio, createdFrom, createdTo)
+	matches, err := m.client.GetLoansByPortfolio(category, portfolio, subPortfolio, createdFrom, createdTo)
 	if err != nil {
 		LogError("archive_loans", err, "selecting "+selection)
 		return CreateErrorResponse(-1, err.Error(), nil)
