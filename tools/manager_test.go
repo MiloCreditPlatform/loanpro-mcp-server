@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -11,6 +12,8 @@ type MockLoanProClient struct {
 	customers    map[string]MockCustomer
 	payments     map[string][]MockPayment
 	transactions map[string][]MockTransaction
+	archiveErr   error
+	archivedIDs  []string
 }
 
 // MockLoan implements the Loan interface
@@ -23,6 +26,7 @@ type MockLoan struct {
 	payoffAmount        string
 	active              string
 	daysPastDue         string
+	archived            string
 }
 
 func (m MockLoan) GetID() string                  { return m.id }
@@ -33,6 +37,7 @@ func (m MockLoan) GetPrincipalBalance() string    { return m.principalBalance }
 func (m MockLoan) GetPayoffAmount() string        { return m.payoffAmount }
 func (m MockLoan) GetActive() string              { return m.active }
 func (m MockLoan) GetDaysPastDue() string         { return m.daysPastDue }
+func (m MockLoan) GetArchived() string            { return m.archived }
 
 // MockCustomer implements the Customer interface
 type MockCustomer struct {
@@ -182,6 +187,14 @@ func (m *MockLoanProClient) GetPastDueLoans(minDaysPastDue, limit, offset int) (
 	return results, nil
 }
 
+func (m *MockLoanProClient) ArchiveLoan(id string) error {
+	if m.archiveErr != nil {
+		return m.archiveErr
+	}
+	m.archivedIDs = append(m.archivedIDs, id)
+	return nil
+}
+
 func (m *MockLoanProClient) GetLoanTransactionsWithOptions(loanID string, opts *TransactionOptions) ([]Transaction, error) {
 	if transactions, exists := m.transactions[loanID]; exists {
 		var result []Transaction
@@ -280,7 +293,7 @@ func TestManager_GetAllTools(t *testing.T) {
 
 	tools := manager.GetAllTools()
 
-	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments", "get_loan_transactions", "get_past_due_loans"}
+	expectedTools := []string{"get_loan", "search_loans", "get_customer", "search_customers", "get_loan_payments", "get_loan_transactions", "get_past_due_loans", "archive_loans"}
 
 	if len(tools) != len(expectedTools) {
 		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(tools))
@@ -873,5 +886,89 @@ func TestManager_ExecuteTool_GetPastDueLoans_ActiveField(t *testing.T) {
 	text := resp.Result.(map[string]any)["content"].([]map[string]any)[0]["text"].(string)
 	if !strings.Contains(text, "Active: 1") {
 		t.Errorf("Expected 'Active: 1' in past due loans output, got: %s", text)
+	}
+}
+
+func archiveTestClient() *MockLoanProClient {
+	return &MockLoanProClient{
+		loans: map[string]MockLoan{
+			"123": {id: "123", displayID: "LN00000123", primaryCustomerName: "Test User", loanStatus: "Open", principalBalance: "100.00", archived: "0"},
+			"456": {id: "456", displayID: "LN00000456", primaryCustomerName: "Test User", loanStatus: "Closed", principalBalance: "0.00", archived: "1"},
+		},
+	}
+}
+
+func responseText(t *testing.T, resp MCPResponse) string {
+	t.Helper()
+	if resp.Error != nil {
+		t.Fatalf("Expected no error, got %v", resp.Error)
+	}
+	return resp.Result.(map[string]any)["content"].([]map[string]any)[0]["text"].(string)
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_DryRunByDefault(t *testing.T) {
+	mockClient := archiveTestClient()
+	manager := NewManager(mockClient)
+
+	text := responseText(t, manager.ExecuteTool("archive_loans", map[string]any{
+		"loan_ids": []any{"123", "456", "999"},
+	}))
+
+	if len(mockClient.archivedIDs) != 0 {
+		t.Errorf("Dry run must not archive loans, archived: %v", mockClient.archivedIDs)
+	}
+	for _, want := range []string{"DRY RUN", "LN00000123", "SKIPPED: already archived", "ID: 999, FAILED: loan not found", "1 to archive, 1 already archived, 1 not found"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("Expected %q in output, got: %s", want, text)
+		}
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_Execute(t *testing.T) {
+	mockClient := archiveTestClient()
+	manager := NewManager(mockClient)
+
+	text := responseText(t, manager.ExecuteTool("archive_loans", map[string]any{
+		"loan_ids": []any{"123", "123", float64(456)},
+		"dry_run":  false,
+	}))
+
+	if len(mockClient.archivedIDs) != 1 || mockClient.archivedIDs[0] != "123" {
+		t.Errorf("Expected only loan 123 archived once, got %v", mockClient.archivedIDs)
+	}
+	if !strings.Contains(text, "1 archived, 1 already archived, 0 failed") {
+		t.Errorf("Unexpected summary: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_ArchiveError(t *testing.T) {
+	mockClient := archiveTestClient()
+	mockClient.archiveErr = errors.New("API returned status 400")
+	manager := NewManager(mockClient)
+
+	text := responseText(t, manager.ExecuteTool("archive_loans", map[string]any{
+		"loan_ids": []any{"123"},
+		"dry_run":  false,
+	}))
+
+	if !strings.Contains(text, "FAILED: API returned status 400") || !strings.Contains(text, "0 archived, 0 already archived, 1 failed") {
+		t.Errorf("Expected failure to be reported, got: %s", text)
+	}
+}
+
+func TestManager_ExecuteTool_ArchiveLoans_InvalidInput(t *testing.T) {
+	manager := NewManager(archiveTestClient())
+
+	tests := []map[string]any{
+		{},
+		{"loan_ids": []any{}},
+		{"loan_ids": "123"},
+		{"loan_ids": []any{"123)?$x"}},
+		{"loan_ids": make([]any, maxArchiveBatch+1)},
+	}
+	for _, args := range tests {
+		if resp := manager.ExecuteTool("archive_loans", args); resp.Error == nil {
+			t.Errorf("Expected error for arguments %v", args)
+		}
 	}
 }

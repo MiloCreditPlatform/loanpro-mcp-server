@@ -153,6 +153,10 @@ func (ca *ClientAdapter) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]t
 	return result, nil
 }
 
+func (ca *ClientAdapter) ArchiveLoan(id string) error {
+	return ca.client.ArchiveLoan(id)
+}
+
 func (ca *ClientAdapter) GetLoanTransactionsWithOptions(loanID string, opts *tools.TransactionOptions) ([]tools.Transaction, error) {
 	// Convert tools.TransactionOptions to loanpro.TransactionOptions
 	var loanProOpts *loanpro.TransactionOptions

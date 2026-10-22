@@ -42,6 +42,11 @@ func (c *Client) makePostRequest(endpoint string, body any) ([]byte, error) {
 	return c.makeRequestWithMethod("POST", endpoint, nil, body)
 }
 
+// makePutRequest makes a PUT request to the LoanPro API
+func (c *Client) makePutRequest(endpoint string, body any) ([]byte, error) {
+	return c.makeRequestWithMethod("PUT", endpoint, nil, body)
+}
+
 // makeRequestWithMethod makes an HTTP request with the specified method
 func (c *Client) makeRequestWithMethod(method, endpoint string, params map[string]string, body any) ([]byte, error) {
 	u, err := url.Parse(c.baseURL + endpoint)

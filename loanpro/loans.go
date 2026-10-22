@@ -249,3 +249,16 @@ func (c *Client) GetPastDueLoans(minDaysPastDue, limit, offset int) ([]Loan, err
 
 	return loans, nil
 }
+
+// ArchiveLoan archives a loan, removing it from live, billable accounts.
+// LoanPro charges a one-time fee per archived loan; setting archived back to 0 resurrects it.
+func (c *Client) ArchiveLoan(loanID string) error {
+	if _, err := strconv.Atoi(loanID); err != nil {
+		return fmt.Errorf("invalid loan id: %q", loanID)
+	}
+
+	_, err := c.makePutRequest("/public/api/1/odata.svc/Loans("+loanID+")", map[string]any{
+		"archived": 1,
+	})
+	return err
+}
